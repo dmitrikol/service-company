@@ -1,0 +1,84 @@
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: autoservice
+      POSTGRES_USER: autoservice
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7
+    volumes:
+      - redis_data:/data
+
+  minio:
+    # Официальный образ minio/minio удалён с Docker Hub; Bitnami Legacy — рабочая замена.
+    image: bitnamilegacy/minio:latest
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+
+  backend:
+    build:
+      context: ./backend
+      args:
+        HTTP_PROXY: ${HTTP_PROXY:-}
+        HTTPS_PROXY: ${HTTPS_PROXY:-}
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-https://pypi.org/simple/}
+    env_file: .env
+    depends_on:
+      - postgres
+      - redis
+      - minio
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+
+  vk_bot:
+    build:
+      context: ./bot_vk
+      args:
+        HTTP_PROXY: ${HTTP_PROXY:-}
+        HTTPS_PROXY: ${HTTPS_PROXY:-}
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-https://pypi.org/simple/}
+    env_file: .env
+    depends_on:
+      - backend
+    volumes:
+      - ./bot_vk:/app
+
+  celery_worker:
+    build:
+      context: ./celery_worker
+      args:
+        HTTP_PROXY: ${HTTP_PROXY:-}
+        HTTPS_PROXY: ${HTTPS_PROXY:-}
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-https://pypi.org/simple/}
+    env_file: .env
+    depends_on:
+      - redis
+      - postgres
+      - minio
+    volumes:
+      - ./celery_worker:/app
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:

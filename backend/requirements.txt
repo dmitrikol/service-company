@@ -1,0 +1,12 @@
+fastapi[all]
+uvicorn[standard]
+sqlalchemy[asyncio]
+asyncpg
+alembic
+redis
+celery
+minio
+pydantic-settings
+vkbottle
+openpyxl
+tzdata

@@ -1,0 +1,28 @@
+# Секреты — никогда не коммитить
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Celery Beat — рантайм-файл расписания (пересоздаётся при запуске)
+celery_worker/celerybeat-schedule*
+
+# Локальные настройки Claude Code и память ассистента
+.claude/settings.local.json
+.remember/
+
+# Рабочее пространство Superpowers (ledger'и, брифы, отчёты, мокапы)
+.superpowers/
+
+# ОС и редакторы
+Thumbs.db
+Desktop.ini
+.idea/
+.vscode/
+*.log

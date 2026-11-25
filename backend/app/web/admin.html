@@ -1,0 +1,657 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Вмятый Элемент — админка</title>
+  <style>
+    :root {
+      --bg: #0f1218;
+      --panel: #171c26;
+      --panel-2: #1e2532;
+      --line: #2b3444;
+      --text: #e8edf5;
+      --muted: #93a0b4;
+      --accent: #6ea8fe;
+      --danger: #ff6b6b;
+      --ok: #4ade80;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    button, input, select, textarea {
+      font: inherit;
+      color: inherit;
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 10px;
+    }
+    button { cursor: pointer; background: #26344a; }
+    button:hover { border-color: var(--accent); }
+    button.primary { background: #2563eb; border-color: #2563eb; color: #fff; }
+    button.danger { background: #3a2026; border-color: #5d2b35; color: #ffb4b4; }
+    input[type="checkbox"] { width: auto; }
+    a { color: var(--accent); }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { color: var(--muted); font-weight: 600; white-space: nowrap; }
+    tr:hover td { background: rgba(255, 255, 255, .025); }
+    .wrap { max-width: 1280px; margin: 0 auto; padding: 24px; }
+    .login-card {
+      max-width: 420px;
+      margin: 12vh auto;
+      padding: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+    }
+    .login-card h1 { margin-top: 0; font-size: 20px; }
+    .hint { color: var(--muted); font-size: 12px; }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+    }
+    h1 { margin: 0; font-size: 22px; }
+    h2 { margin: 0 0 14px; font-size: 17px; }
+    h3 { margin: 22px 0 10px; font-size: 15px; }
+    .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+    .tab.active { background: #2563eb; border-color: #2563eb; color: #fff; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 18px;
+      margin-bottom: 18px;
+    }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: end; }
+    .row > label { display: flex; flex-direction: column; gap: 4px; min-width: 130px; }
+    .grow { flex: 1 1 260px; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+    .card {
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px;
+    }
+    .card b { display: block; font-size: 22px; margin-top: 4px; }
+    .card span { color: var(--muted); font-size: 12px; }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      font-size: 12px;
+    }
+    .badge.booked { color: #93c5fd; }
+    .badge.completed { color: var(--ok); }
+    .badge.cancelled, .badge.no_show { color: #fca5a5; }
+    .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+    .actions button { padding: 5px 8px; font-size: 12px; }
+    .muted { color: var(--muted); }
+    .table-scroll { overflow-x: auto; }
+    #toast {
+      position: fixed;
+      right: 20px;
+      bottom: 20px;
+      max-width: 420px;
+      padding: 12px 16px;
+      background: #1e3a2b;
+      border: 1px solid #2f6b4a;
+      border-radius: 10px;
+      display: none;
+      z-index: 50;
+    }
+    #toast.bad { background: #3a2026; border-color: #5d2b35; }
+    @media (max-width: 700px) {
+      .wrap { padding: 14px; }
+      th, td { white-space: nowrap; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="login" class="login-card">
+  <h1>Вмятый Элемент — админка</h1>
+  <p class="hint">Введите <b>HMAC_SECRET</b> из <code>.env</code>. Он используется как пароль админки и передаётся в заголовке <code>x-admin-secret</code>.</p>
+  <label>Пароль админки<br><input id="secret" type="password" autocomplete="current-password" style="width:100%"></label>
+  <p><button class="primary" id="loginBtn" style="width:100%;margin-top:12px">Войти</button></p>
+  <p class="hint">Не открывайте эту страницу без HTTPS.</p>
+</div>
+
+<div id="app" class="wrap" hidden>
+  <header>
+    <div>
+      <h1>Вмятый Элемент</h1>
+      <div class="hint">Админка · VK как основной канал</div>
+    </div>
+    <button id="logoutBtn">Выйти</button>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="overview">Обзор</button>
+    <button class="tab" data-tab="clients">Клиенты</button>
+    <button class="tab" data-tab="services">Услуги</button>
+    <button class="tab" data-tab="appointments">Записи</button>
+    <button class="tab" data-tab="works">Работы</button>
+    <button class="tab" data-tab="settings">Настройки</button>
+  </div>
+
+  <section id="tab-overview">
+    <div class="panel">
+      <h2>Статистика за 30 дней</h2>
+      <div class="cards" id="statCards"></div>
+      <h3>По услугам</h3>
+      <div class="table-scroll">
+        <table><thead><tr><th>Услуга</th><th>Работ</th><th>Выручка</th></tr></thead><tbody id="statServices"></tbody></table>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-clients" hidden>
+    <div class="panel">
+      <h2>Клиенты</h2>
+      <div class="row" style="margin-bottom:12px">
+        <input id="clientSearch" class="grow" placeholder="Поиск: имя, телефон, ник VK">
+        <button id="clientSearchBtn">Найти</button>
+        <button id="clientMergeBtn">Слить дубли</button>
+        <button id="clientExportBtn">Экспорт xlsx</button>
+      </div>
+      <div class="row" style="margin-bottom:14px">
+        <label>Имя<input id="clientName" placeholder="Новый клиент"></label>
+        <label>Телефон<input id="clientPhone" placeholder="+7..."></label>
+        <button class="primary" id="clientAddBtn">Добавить</button>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>ID</th><th>Имя</th><th>Телефон</th><th>VK</th><th>Записей</th><th>Действия</th></tr></thead>
+          <tbody id="clientsTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-services" hidden>
+    <div class="panel">
+      <h2>Услуги</h2>
+      <div class="row" style="margin-bottom:14px">
+        <label class="grow">Название<input id="svcName"></label>
+        <label>Цена от<input id="svcPrice" type="number" min="0" step="0.01"></label>
+        <label>Минут<input id="svcDuration" type="number" min="1" value="60"></label>
+        <label style="flex-direction:row;align-items:center;margin-bottom:8px"><input id="svcPdr" type="checkbox"> PDR</label>
+        <button class="primary" id="svcAddBtn">Добавить</button>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>ID</th><th>Услуга</th><th>Цена от</th><th>Длительность</th><th>Флаги</th><th>Действия</th></tr></thead>
+          <tbody id="servicesTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-appointments" hidden>
+    <div class="panel">
+      <h2>Записи</h2>
+      <p class="hint">Метки напоминаний выставляются автоматически после отправки в VK.</p>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>ID</th><th>Начало</th><th>Клиент / VK</th><th>Авто</th><th>Услуга</th><th>Статус</th><th>Цена</th><th>Действия</th></tr></thead>
+          <tbody id="appointmentsTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-works" hidden>
+    <div class="panel">
+      <h2>Журнал работ</h2>
+      <div class="row" style="margin-bottom:12px">
+        <label>Месяц<input id="workMonth" type="month"></label>
+        <button id="workMonthBtn">Показать</button>
+        <button id="workExportBtn">Экспорт xlsx</button>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>ID</th><th>Дата</th><th>Клиент / VK</th><th>Авто</th><th>Услуга</th><th>Факт</th><th>Сумма</th><th>Комментарий</th><th>Действия</th></tr></thead>
+          <tbody id="worksTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-settings" hidden>
+    <div class="panel">
+      <h2>Расписание</h2>
+      <p class="hint">Время в полях ниже задаётся в таймзоне сервиса (<code>timezone</code>), а не UTC.</p>
+      <div class="row">
+        <label class="grow">Timezone<input id="setTimezone" placeholder="Europe/Moscow"></label>
+        <label>Часы работы<input id="setWorkHours" placeholder="09:00-20:00"></label>
+        <label>Дни недели<input id="setWorkDays" placeholder="1,2,3,4,5,6,7"></label>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <label class="grow">Выходные даты<input id="setNonWorking" placeholder="01.05.2026, 09.05.2026"></label>
+        <label>Напоминание за, ч<input id="setRemind1" type="number" min="1" step="0.5"></label>
+        <label>«Скоро» за, ч<input id="setRemind2" type="number" min="1" step="0.5"></label>
+      </div>
+      <p><button class="primary" id="scheduleSaveBtn">Сохранить расписание</button></p>
+    </div>
+    <div class="panel">
+      <h2>Контакты</h2>
+      <textarea id="contactsText" rows="5" style="width:100%"></textarea>
+      <p><button class="primary" id="contactsSaveBtn">Сохранить контакты</button></p>
+    </div>
+  </section>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const API = '/api/v1/admin';
+const $ = (sel, root = document) => root.querySelector(sel);
+const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+
+let secret = sessionStorage.getItem('ve_admin_secret') || '';
+let currentTab = 'overview';
+
+function esc(value) {
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[ch]));
+}
+
+function money(value) {
+  const n = Number(value || 0);
+  return n.toLocaleString('ru-RU', { maximumFractionDigits: 2 }) + ' ₽';
+}
+
+function dt(value) {
+  if (!value) return '—';
+  const d = new Date(value);
+  return isNaN(d) ? value : d.toLocaleString('ru-RU', {
+    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+  });
+}
+
+function toast(message, bad = false) {
+  const el = $('#toast');
+  el.textContent = message;
+  el.className = bad ? 'bad' : '';
+  el.style.display = 'block';
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => { el.style.display = 'none'; }, 3500);
+}
+
+function showLogin() {
+  $('#app').hidden = true;
+  $('#login').hidden = false;
+  $('#secret').focus();
+}
+
+async function api(path, options = {}) {
+  const opts = Object.assign({}, options);
+  const headers = Object.assign({}, opts.headers || {});
+  if (secret) headers['x-admin-secret'] = secret;
+  if (opts.body && typeof opts.body !== 'string' && !(opts.body instanceof Blob)) {
+    headers['Content-Type'] = 'application/json';
+    opts.body = JSON.stringify(opts.body);
+  }
+  opts.headers = headers;
+  const res = await fetch(API + path, opts);
+  if (res.status === 401 || res.status === 403) {
+    sessionStorage.removeItem('ve_admin_secret');
+    secret = '';
+    showLogin();
+    throw new Error('Нет доступа. Проверьте HMAC_SECRET.');
+  }
+  if (!res.ok) {
+    let detail = '';
+    try { detail = (await res.json()).detail || ''; } catch (e) {}
+    throw new Error(detail || ('HTTP ' + res.status));
+  }
+  const type = res.headers.get('content-type') || '';
+  return type.includes('application/json') ? res.json() : res.text();
+}
+
+async function download(path, fallbackName) {
+  try {
+    const res = await fetch(API + path, { headers: { 'x-admin-secret': secret } });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const disposition = res.headers.get('content-disposition') || '';
+    const match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+    const name = match ? decodeURIComponent(match[1]) : fallbackName;
+    const url = URL.createObjectURL(await res.blob());
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    toast('Не удалось скачать: ' + e.message, true);
+  }
+}
+
+function secure(fn) {
+  return async (...args) => {
+    try { await fn(...args); }
+    catch (e) { toast(e.message, true); }
+  };
+}
+
+/* ─── Обзор ─── */
+const loadOverview = secure(async () => {
+  const s = await api('/stats?days=30');
+  const cards = [
+    ['Клиенты', s.clients_count],
+    ['Записей за 30 дней', s.appointments.total],
+    ['Выполнено', s.appointments.completed],
+    ['Отменено', s.appointments.cancelled],
+    ['Работ', s.works_count],
+    ['Выручка', money(s.revenue)]
+  ];
+  $('#statCards').innerHTML = cards.map(([label, value]) =>
+    `<div class="card"><span>${esc(label)}</span><b>${esc(value)}</b></div>`).join('');
+  $('#statServices').innerHTML = (s.by_service || []).map(r =>
+    `<tr><td>${esc(r.service)}</td><td>${esc(r.count)}</td><td>${money(r.revenue)}</td></tr>`).join('')
+    || '<tr><td colspan="3" class="muted">Нет данных</td></tr>';
+});
+
+/* ─── Клиенты ─── */
+const loadClients = secure(async () => {
+  const q = encodeURIComponent($('#clientSearch').value.trim());
+  const rows = await api('/clients' + (q ? '?q=' + q : ''));
+  $('#clientsTable').innerHTML = rows.map(c => `
+    <tr>
+      <td>${c.id}</td>
+      <td>${esc(c.name)}</td>
+      <td>${esc(c.phone || '—')}</td>
+      <td>${esc(c.vk_username || c.vk_external_id || '—')}</td>
+      <td>${c.appointments_count}</td>
+      <td><div class="actions">
+        <button data-act="edit" data-id="${c.id}">Изменить</button>
+        <button class="danger" data-act="del" data-id="${c.id}">Удалить</button>
+      </div></td>
+    </tr>`).join('') || '<tr><td colspan="6" class="muted">Ничего не найдено</td></tr>';
+});
+
+const addClient = secure(async () => {
+  const name = $('#clientName').value.trim();
+  const phone = $('#clientPhone').value.trim();
+  if (!name) return toast('Введите имя', true);
+  await api('/clients', { method: 'POST', body: { name, phone: phone || null } });
+  $('#clientName').value = '';
+  $('#clientPhone').value = '';
+  toast('Клиент добавлен');
+  loadClients();
+});
+
+const mergeClients = secure(async () => {
+  const from = prompt('ID клиента, которого сливаем (исчезнет):');
+  const to = prompt('ID клиента, в которого переносим:');
+  if (!from || !to) return;
+  await api('/clients/merge', { method: 'POST', body: { from_id: +from, to_id: +to } });
+  toast('Клиенты объединены');
+  loadClients();
+});
+
+$('#clientsTable').addEventListener('click', secure(async (e) => {
+  const btn = e.target.closest('button[data-act]');
+  if (!btn) return;
+  const id = btn.dataset.id;
+  if (btn.dataset.act === 'del') {
+    if (!confirm('Скрыть клиента? История сохранится.')) return;
+    await api('/clients/' + id, { method: 'DELETE' });
+    toast('Клиент скрыт');
+  } else {
+    const name = prompt('Имя', btn.closest('tr').children[1].textContent) || '';
+    const phone = prompt('Телефон', btn.closest('tr').children[2].textContent.trim());
+    await api('/clients/' + id, { method: 'PATCH', body: { name, phone: phone || null } });
+    toast('Клиент обновлён');
+  }
+  loadClients();
+}));
+
+/* ─── Услуги ─── */
+const loadServices = secure(async () => {
+  const rows = await api('/services');
+  $('#servicesTable').innerHTML = rows.map(s => `
+    <tr>
+      <td>${s.id}</td>
+      <td>${esc(s.name)}<div class="hint">${esc(s.description || '')}</div></td>
+      <td>${money(s.price_from)}</td>
+      <td>${s.duration_minutes} мин</td>
+      <td>${s.is_pdr ? '<span class="badge">PDR</span> ' : ''}${s.is_active ? '<span class="badge">активна</span>' : '<span class="badge muted">скрыта</span>'}</td>
+      <td><div class="actions">
+        <button data-act="edit" data-id="${s.id}">Изменить</button>
+        <button data-act="history" data-id="${s.id}">Цены</button>
+        <button data-act="export" data-id="${s.id}">xlsx</button>
+      </div></td>
+    </tr>`).join('') || '<tr><td colspan="6" class="muted">Услуг нет</td></tr>';
+});
+
+const addService = secure(async () => {
+  const name = $('#svcName').value.trim();
+  const price = Number($('#svcPrice').value);
+  const duration = Number($('#svcDuration').value || 60);
+  if (!name || !price) return toast('Заполните название и цену', true);
+  await api('/services', {
+    method: 'POST',
+    body: { name, price_from: price, duration_minutes: duration, description: '', is_pdr: $('#svcPdr').checked }
+  });
+  $('#svcName').value = '';
+  $('#svcPrice').value = '';
+  toast('Услуга добавлена');
+  loadServices();
+});
+
+$('#servicesTable').addEventListener('click', secure(async (e) => {
+  const btn = e.target.closest('button[data-act]');
+  if (!btn) return;
+  const id = btn.dataset.id;
+  if (btn.dataset.act === 'export') {
+    return download('/services/' + id + '/export', 'usluga.xlsx');
+  }
+  if (btn.dataset.act === 'history') {
+    const h = await api('/services/' + id + '/price-history');
+    alert(h.history.map(r => `${r.changed_at}: ${money(r.price_from)}`).join('\n') || 'Истории пока нет');
+    return;
+  }
+  const tr = btn.closest('tr');
+  const name = prompt('Название', tr.children[1].firstChild.textContent.trim()) || '';
+  const price = Number(prompt('Цена от', String(tr.children[2].textContent.replace(/[^\d.,]/g, '').replace(',', '.'))) || 0);
+  const duration = Number(prompt('Длительность, мин', tr.children[3].textContent.replace(/\D/g, '')) || 60);
+  const isPdr = confirm('Это услуга PDR (отдельное расписание)?') ? 1 : 0;
+  const isActive = confirm('Услуга активна?') ? 1 : 0;
+  await api('/services/' + id, {
+    method: 'PATCH',
+    body: { name, price_from: price, duration_minutes: duration, is_pdr: !!isPdr, is_active: !!isActive }
+  });
+  toast('Услуга обновлена');
+  loadServices();
+}));
+
+/* ─── Записи ─── */
+const loadAppointments = secure(async () => {
+  const rows = await api('/appointments');
+  $('#appointmentsTable').innerHTML = rows.map(a => `
+    <tr>
+      <td>${a.id}</td>
+      <td>${esc(dt(a.start))}</td>
+      <td>${esc(a.client_name)}<div class="hint">${esc(a.client_phone || '')}</div>
+        ${a.client_vk_id ? `<a href="https://vk.com/id${a.client_vk_id}" target="_blank" rel="noopener">VK ${a.client_vk_id}</a>` : '<span class="muted">VK —</span>'}
+      </td>
+      <td>${esc(a.car)}</td>
+      <td>${esc(a.service)}</td>
+      <td><span class="badge ${esc(a.status)}">${esc(a.status)}</span></td>
+      <td>${a.actual_price != null ? money(a.actual_price) : '—'}</td>
+      <td><div class="actions">
+        <button data-act="complete" data-id="${a.id}">Завершить</button>
+        <button data-act="cancel" data-id="${a.id}">Отменить</button>
+        <button data-act="noshow" data-id="${a.id}">Не явка</button>
+      </div></td>
+    </tr>`).join('') || '<tr><td colspan="8" class="muted">Записей пока нет</td></tr>';
+});
+
+$('#appointmentsTable').addEventListener('click', secure(async (e) => {
+  const btn = e.target.closest('button[data-act]');
+  if (!btn) return;
+  const id = btn.dataset.id;
+  const act = btn.dataset.act;
+  if (act === 'complete') {
+    const price = prompt('Фактическая цена (₽)', '');
+    if (price === null) return;
+    await api('/appointments/' + id, {
+      method: 'PATCH',
+      body: { status: 'completed', actual_price: Number(price || 0) }
+    });
+  } else {
+    if (!confirm('Изменить статус записи?')) return;
+    await api('/appointments/' + id, {
+      method: 'PATCH', body: { status: act === 'cancel' ? 'cancelled' : 'no_show' }
+    });
+  }
+  toast('Статус обновлён');
+  loadAppointments();
+}));
+
+/* ─── Работы ─── */
+const loadWorks = secure(async () => {
+  const month = $('#workMonth').value;
+  const rows = await api('/works' + (month ? '?month=' + encodeURIComponent(month) : ''));
+  $('#worksTable').innerHTML = rows.map(w => `
+    <tr>
+      <td>${w.id}</td>
+      <td>${esc(dt(w.performed_at))}</td>
+      <td>${esc(w.client_name)}<div class="hint">${esc(w.client_phone || '')}</div>
+        ${w.client_vk_id ? `<a href="https://vk.com/id${w.client_vk_id}" target="_blank" rel="noopener">VK ${w.client_vk_id}</a>` : '<span class="muted">VK —</span>'}
+      </td>
+      <td>${esc(w.car)}</td>
+      <td>${esc(w.service)}</td>
+      <td>${money(w.actual_price)}</td>
+      <td>${money(w.total_amount)}</td>
+      <td>${esc(w.master_comment || '—')}</td>
+      <td><button data-act="edit" data-id="${w.id}">Изменить</button></td>
+    </tr>`).join('') || '<tr><td colspan="9" class="muted">Работ за период нет</td></tr>';
+});
+
+$('#worksTable').addEventListener('click', secure(async (e) => {
+  const btn = e.target.closest('button[data-act]');
+  if (!btn) return;
+  const tr = btn.closest('tr');
+  const price = Number(prompt('Фактическая цена', String(tr.children[5].textContent.replace(/[^\d.,]/g, '').replace(',', '.'))) || 0);
+  const comment = prompt('Комментарий мастера', tr.children[7].textContent === '—' ? '' : tr.children[7].textContent) || '';
+  await api('/works/' + btn.dataset.id, {
+    method: 'PATCH', body: { actual_price: price, total_amount: price, master_comment: comment }
+  });
+  toast('Работа обновлена');
+  loadWorks();
+}));
+
+/* ─── Настройки ─── */
+const loadSettings = secure(async () => {
+  const [s, c] = await Promise.all([api('/schedule'), api('/contacts')]);
+  $('#setTimezone').value = s.timezone || 'UTC';
+  $('#setWorkHours').value = s.work_hours || '';
+  $('#setWorkDays').value = s.work_days || '';
+  $('#setNonWorking').value = s.non_working_dates || '';
+  $('#setRemind1').value = s.remind_hours || 24;
+  $('#setRemind2').value = s.remind_hours_2 || 3;
+  $('#contactsText').value = c.contacts_text || '';
+});
+
+const saveSchedule = secure(async () => {
+  await api('/schedule', {
+    method: 'PATCH',
+    body: {
+      timezone: $('#setTimezone').value.trim(),
+      work_hours: $('#setWorkHours').value.trim(),
+      work_days: $('#setWorkDays').value.trim(),
+      non_working_dates: $('#setNonWorking').value.trim(),
+      remind_hours: $('#setRemind1').value,
+      remind_hours_2: $('#setRemind2').value
+    }
+  });
+  toast('Расписание сохранено');
+});
+
+const saveContacts = secure(async () => {
+  await api('/contacts', {
+    method: 'PATCH', body: { contacts_text: $('#contactsText').value }
+  });
+  toast('Контакты сохранены');
+});
+
+/* ─── События ─── */
+const loaders = {
+  overview: loadOverview,
+  clients: loadClients,
+  services: loadServices,
+  appointments: loadAppointments,
+  works: loadWorks,
+  settings: loadSettings
+};
+
+function activate(tab) {
+  currentTab = tab;
+  $$('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  $$('section[id^="tab-"]').forEach(s => { s.hidden = s.id !== 'tab-' + tab; });
+  loaders[tab]();
+}
+
+$$('.tab').forEach(btn => btn.addEventListener('click', () => activate(btn.dataset.tab)));
+
+$('#loginBtn').addEventListener('click', () => {
+  secret = $('#secret').value.trim();
+  if (!secret) return toast('Введите HMAC_SECRET', true);
+  sessionStorage.setItem('ve_admin_secret', secret);
+  $('#login').hidden = true;
+  $('#app').hidden = false;
+  activate(currentTab);
+});
+
+$('#secret').addEventListener('keydown', e => {
+  if (e.key === 'Enter') $('#loginBtn').click();
+});
+
+$('#logoutBtn').addEventListener('click', () => {
+  sessionStorage.removeItem('ve_admin_secret');
+  secret = '';
+  $('#secret').value = '';
+  showLogin();
+});
+
+$('#clientSearchBtn').addEventListener('click', loadClients);
+$('#clientSearch').addEventListener('keydown', e => { if (e.key === 'Enter') loadClients(); });
+$('#clientAddBtn').addEventListener('click', addClient);
+$('#clientMergeBtn').addEventListener('click', mergeClients);
+$('#clientExportBtn').addEventListener('click', () => download('/clients/export', 'clients.xlsx'));
+
+$('#svcAddBtn').addEventListener('click', addService);
+$('#workMonthBtn').addEventListener('click', loadWorks);
+$('#workExportBtn').addEventListener('click', () => download('/works/export', 'works.xlsx'));
+$('#scheduleSaveBtn').addEventListener('click', saveSchedule);
+$('#contactsSaveBtn').addEventListener('click', saveContacts);
+
+(function init() {
+  const now = new Date();
+  $('#workMonth').value = now.toISOString().slice(0, 7);
+  if (secret) {
+    $('#login').hidden = true;
+    $('#app').hidden = false;
+    activate(currentTab);
+  } else {
+    showLogin();
+  }
+})();
+</script>
+</body>
+</html>
