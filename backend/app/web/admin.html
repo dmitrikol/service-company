@@ -112,9 +112,61 @@
       z-index: 50;
     }
     #toast.bad { background: #3a2026; border-color: #5d2b35; }
-    @media (max-width: 700px) {
+    @media (max-width: 700px), (pointer: coarse) {
       .wrap { padding: 14px; }
-      th, td { white-space: nowrap; }
+      h1 { font-size: 20px; }
+      .login-card { margin: 6vh auto; padding: 18px; width: calc(100% - 28px); }
+      header { align-items: center; }
+      button, input, select, textarea { min-height: 44px; font-size: 16px; }
+      input[type="checkbox"] { min-height: auto; width: 20px; height: 20px; }
+      textarea { min-height: 110px; }
+      .tab { flex: 0 0 auto; min-height: 44px; padding: 10px 14px; }
+      .tabs {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin: 0 -14px 14px;
+        padding: 8px 14px 10px;
+        background: var(--bg);
+      }
+      .tabs::-webkit-scrollbar { display: none; }
+      .panel { padding: 14px; }
+      .row { align-items: stretch; }
+      .row > label, .row > .grow { flex: 1 1 100%; min-width: 0; }
+      .cards { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+      .table-scroll { overflow-x: visible; }
+      table, tbody, tr, td { display: block; width: 100%; }
+      thead { display: none; }
+      tr {
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 10px;
+        margin-bottom: 10px;
+      }
+      td {
+        border-bottom: 1px solid var(--line);
+        padding: 8px 2px;
+        white-space: normal;
+        word-break: break-word;
+      }
+      td:last-child { border-bottom: 0; }
+      td::before {
+        content: attr(data-label);
+        display: block;
+        margin-bottom: 2px;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 600;
+      }
+      td.empty { text-align: center; color: var(--muted); }
+      td.empty::before { display: none; }
+      .actions { min-height: 40px; }
+      .actions button { min-height: 40px; padding: 8px 12px; font-size: 13px; }
+      #toast { left: 14px; right: 14px; bottom: 14px; max-width: none; }
     }
   </style>
 </head>
@@ -361,8 +413,8 @@ const loadOverview = secure(async () => {
   $('#statCards').innerHTML = cards.map(([label, value]) =>
     `<div class="card"><span>${esc(label)}</span><b>${esc(value)}</b></div>`).join('');
   $('#statServices').innerHTML = (s.by_service || []).map(r =>
-    `<tr><td>${esc(r.service)}</td><td>${esc(r.count)}</td><td>${money(r.revenue)}</td></tr>`).join('')
-    || '<tr><td colspan="3" class="muted">Нет данных</td></tr>';
+    `<tr><td data-label="Услуга">${esc(r.service)}</td><td data-label="Работ">${esc(r.count)}</td><td data-label="Выручка">${money(r.revenue)}</td></tr>`).join('')
+    || '<tr><td class="empty" colspan="3">Нет данных</td></tr>';
 });
 
 /* ─── Клиенты ─── */
@@ -371,16 +423,16 @@ const loadClients = secure(async () => {
   const rows = await api('/clients' + (q ? '?q=' + q : ''));
   $('#clientsTable').innerHTML = rows.map(c => `
     <tr>
-      <td>${c.id}</td>
-      <td>${esc(c.name)}</td>
-      <td>${esc(c.phone || '—')}</td>
-      <td>${esc(c.vk_username || c.vk_external_id || '—')}</td>
-      <td>${c.appointments_count}</td>
-      <td><div class="actions">
+      <td data-label="ID">${c.id}</td>
+      <td data-label="Имя">${esc(c.name)}</td>
+      <td data-label="Телефон">${esc(c.phone || '—')}</td>
+      <td data-label="VK">${esc(c.vk_username || c.vk_external_id || '—')}</td>
+      <td data-label="Записей">${c.appointments_count}</td>
+      <td data-label="Действия"><div class="actions">
         <button data-act="edit" data-id="${c.id}">Изменить</button>
         <button class="danger" data-act="del" data-id="${c.id}">Удалить</button>
       </div></td>
-    </tr>`).join('') || '<tr><td colspan="6" class="muted">Ничего не найдено</td></tr>';
+    </tr>`).join('') || '<tr><td class="empty" colspan="6">Ничего не найдено</td></tr>';
 });
 
 const addClient = secure(async () => {
@@ -425,17 +477,17 @@ const loadServices = secure(async () => {
   const rows = await api('/services');
   $('#servicesTable').innerHTML = rows.map(s => `
     <tr>
-      <td>${s.id}</td>
-      <td>${esc(s.name)}<div class="hint">${esc(s.description || '')}</div></td>
-      <td>${money(s.price_from)}</td>
-      <td>${s.duration_minutes} мин</td>
-      <td>${s.is_pdr ? '<span class="badge">PDR</span> ' : ''}${s.is_active ? '<span class="badge">активна</span>' : '<span class="badge muted">скрыта</span>'}</td>
-      <td><div class="actions">
+      <td data-label="ID">${s.id}</td>
+      <td data-label="Услуга">${esc(s.name)}<div class="hint">${esc(s.description || '')}</div></td>
+      <td data-label="Цена от">${money(s.price_from)}</td>
+      <td data-label="Длительность">${s.duration_minutes} мин</td>
+      <td data-label="Флаги">${s.is_pdr ? '<span class="badge">PDR</span> ' : ''}${s.is_active ? '<span class="badge">активна</span>' : '<span class="badge muted">скрыта</span>'}</td>
+      <td data-label="Действия"><div class="actions">
         <button data-act="edit" data-id="${s.id}">Изменить</button>
         <button data-act="history" data-id="${s.id}">Цены</button>
         <button data-act="export" data-id="${s.id}">xlsx</button>
       </div></td>
-    </tr>`).join('') || '<tr><td colspan="6" class="muted">Услуг нет</td></tr>';
+    </tr>`).join('') || '<tr><td class="empty" colspan="6">Услуг нет</td></tr>';
 });
 
 const addService = secure(async () => {
@@ -484,21 +536,21 @@ const loadAppointments = secure(async () => {
   const rows = await api('/appointments');
   $('#appointmentsTable').innerHTML = rows.map(a => `
     <tr>
-      <td>${a.id}</td>
-      <td>${esc(dt(a.start))}</td>
-      <td>${esc(a.client_name)}<div class="hint">${esc(a.client_phone || '')}</div>
+      <td data-label="ID">${a.id}</td>
+      <td data-label="Начало">${esc(dt(a.start))}</td>
+      <td data-label="Клиент / VK">${esc(a.client_name)}<div class="hint">${esc(a.client_phone || '')}</div>
         ${a.client_vk_id ? `<a href="https://vk.com/id${a.client_vk_id}" target="_blank" rel="noopener">VK ${a.client_vk_id}</a>` : '<span class="muted">VK —</span>'}
       </td>
-      <td>${esc(a.car)}</td>
-      <td>${esc(a.service)}</td>
-      <td><span class="badge ${esc(a.status)}">${esc(a.status)}</span></td>
-      <td>${a.actual_price != null ? money(a.actual_price) : '—'}</td>
-      <td><div class="actions">
+      <td data-label="Авто">${esc(a.car)}</td>
+      <td data-label="Услуга">${esc(a.service)}</td>
+      <td data-label="Статус"><span class="badge ${esc(a.status)}">${esc(a.status)}</span></td>
+      <td data-label="Цена">${a.actual_price != null ? money(a.actual_price) : '—'}</td>
+      <td data-label="Действия"><div class="actions">
         <button data-act="complete" data-id="${a.id}">Завершить</button>
         <button data-act="cancel" data-id="${a.id}">Отменить</button>
         <button data-act="noshow" data-id="${a.id}">Не явка</button>
       </div></td>
-    </tr>`).join('') || '<tr><td colspan="8" class="muted">Записей пока нет</td></tr>';
+    </tr>`).join('') || '<tr><td class="empty" colspan="8">Записей пока нет</td></tr>';
 });
 
 $('#appointmentsTable').addEventListener('click', secure(async (e) => {
@@ -529,18 +581,18 @@ const loadWorks = secure(async () => {
   const rows = await api('/works' + (month ? '?month=' + encodeURIComponent(month) : ''));
   $('#worksTable').innerHTML = rows.map(w => `
     <tr>
-      <td>${w.id}</td>
-      <td>${esc(dt(w.performed_at))}</td>
-      <td>${esc(w.client_name)}<div class="hint">${esc(w.client_phone || '')}</div>
+      <td data-label="ID">${w.id}</td>
+      <td data-label="Дата">${esc(dt(w.performed_at))}</td>
+      <td data-label="Клиент / VK">${esc(w.client_name)}<div class="hint">${esc(w.client_phone || '')}</div>
         ${w.client_vk_id ? `<a href="https://vk.com/id${w.client_vk_id}" target="_blank" rel="noopener">VK ${w.client_vk_id}</a>` : '<span class="muted">VK —</span>'}
       </td>
-      <td>${esc(w.car)}</td>
-      <td>${esc(w.service)}</td>
-      <td>${money(w.actual_price)}</td>
-      <td>${money(w.total_amount)}</td>
-      <td>${esc(w.master_comment || '—')}</td>
-      <td><button data-act="edit" data-id="${w.id}">Изменить</button></td>
-    </tr>`).join('') || '<tr><td colspan="9" class="muted">Работ за период нет</td></tr>';
+      <td data-label="Авто">${esc(w.car)}</td>
+      <td data-label="Услуга">${esc(w.service)}</td>
+      <td data-label="Факт">${money(w.actual_price)}</td>
+      <td data-label="Сумма">${money(w.total_amount)}</td>
+      <td data-label="Комментарий">${esc(w.master_comment || '—')}</td>
+      <td data-label="Действия"><button data-act="edit" data-id="${w.id}">Изменить</button></td>
+    </tr>`).join('') || '<tr><td class="empty" colspan="9">Работ за период нет</td></tr>';
 });
 
 $('#worksTable').addEventListener('click', secure(async (e) => {
