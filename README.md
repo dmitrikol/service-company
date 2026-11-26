@@ -1,3 +1,6 @@
+<div align="center">
+  <img src="banner.png" width="100%" alt="Service Company">
+</div>
 # Service Company — система записи и учёта автосервиса
 
 Клиенты записываются на услуги через VK-бота; администратор ведёт услуги, записи,
