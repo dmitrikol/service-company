@@ -25,18 +25,20 @@
 | `vk_bot` | vkbottle | — | клиентский сценарий записи + уведомления админу в VK |
 | `celery_worker` | Celery + Beat | — | напоминания о записях в VK (две стадии, каждые 5 минут) |
 
-Конфиг: `pydantic-settings` в backend (`app/core/config.py`), бот/воркер читают
-`os.getenv`. Корневой `.env` подключается через `env_file: .env`.
+Конфиг: `pydantic-settings` в backend (`app/core/config.py`) читает только
+`DB_*` и `HMAC_SECRET`; бот и воркер читают нужные переменные через `os.getenv`.
+Корневой `.env` подключается через `env_file: .env`, лишние ключи backend игнорирует.
 
 Переменные окружения:
-- БД/Redis/MinIO: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`,
-  `REDIS_URL`, `MINIO_*`, `BACKEND_INTERNAL_URL=http://backend:8000`.
+- backend: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`,
+  `HMAC_SECRET` (пароль веб-админки, заголовок `x-admin-secret`).
+- Redis/Celery: `REDIS_URL` — брокер для `celery_worker` и polling-кэш VK-бота.
+- MinIO: `MINIO_ACCESS_KEY`/`MINIO_SECRET_KEY` использует только сервис `minio`
+  в compose; кодом проекта не применяется. `ENCRYPTION_KEY` зарезервирован,
+  шифрования нет. `BACKEND_INTERNAL_URL` нужен VK-боту.
 - VK: `VK_GROUP_TOKEN`, `VK_GROUP_ID` (для `messages.send` и `group_id`),
   `ADMIN_VK_ID` — VK id администратора для уведомлений; без него нотификации
   пишут только предупреждение в лог.
-- Секреты: `HMAC_SECRET` — пароль веб-админки (заголовок `x-admin-secret`),
-  используется напрямую через `hmac.compare_digest`; `ENCRYPTION_KEY` объявлен,
-  но шифрования пока нет.
 - Сборка Python-образов использует build-арги `HTTP_PROXY`/`HTTPS_PROXY`
   (`http://http.docker.internal:3128`) и `PIP_INDEX_URL`
   (`https://mirrors.aliyun.com/pypi/simple/`). VK-боту важен

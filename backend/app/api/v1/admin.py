@@ -8,7 +8,6 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from minio import Minio
 from app.core.config import settings
 from app.core.database import get_db
 from app.models.client import Client
@@ -20,14 +19,6 @@ from app.models.setting import Setting
 from app.services.schedule import get_schedule, get_timezone
 from app.services.contacts import get_contacts, CONTACTS_KEY
 from app.services.works_export import build_works_xlsx
-
-minio_client = Minio(
-    settings.MINIO_ENDPOINT,
-    access_key=settings.MINIO_ACCESS_KEY,
-    secret_key=settings.MINIO_SECRET_KEY,
-    secure=False,
-)
-BUCKET_NAME = settings.MINIO_BUCKET_NAME
 
 
 def _local_iso(value: datetime | None, tz) -> str | None:

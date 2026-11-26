@@ -184,6 +184,9 @@ docker compose logs -f vk_bot         # в логе должно появить�
 | `ENCRYPTION_KEY` | зарезервирован для шифрования (сейчас кодом не используется) |
 | `BACKEND_INTERNAL_URL` | внутренний URL бэкенда для бота/Celery (`http://backend:8000`) |
 
+Backend читает только `DB_*` и `HMAC_SECRET`; остальные переменные нужны
+`vk_bot`, `celery_worker` или сервису `minio`.
+
 ### Генерация секретов
 
 Для `ENCRYPTION_KEY` и `HMAC_SECRET` нужны разные случайные строки. Сгенерируйте

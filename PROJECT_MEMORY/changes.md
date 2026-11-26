@@ -137,3 +137,11 @@ celery_worker. Скрипты запуска и README используют `doc
 --wait`; ручной вызов Alembic больше не требуется. Файлы: `docker-compose.yml`,
 `start.bat`, `start.sh`, `README.md`, `PROJECT_MEMORY/overview.md`.
 Проверено через `docker compose config --quiet`; контейнеры не запускались.
+
+[2026-11-26] Этап 6 исправлений по аудиту: убраны неиспользуемые обязательные
+настройки и зависимости backend. `Settings` теперь требует только `DB_*` и
+`HMAC_SECRET`; Redis, MinIO, VK, `ENCRYPTION_KEY` и `BACKEND_INTERNAL_URL` остаются
+в `.env` для других сервисов и backend игнорирует их. Удалён создававшийся без
+пользы MinIO-клиент в `admin.py`; из `backend/requirements.txt` убраны redis,
+celery, minio и vkbottle. Обновлены `README.md` и `PROJECT_MEMORY/overview.md`.
+Синтаксис проверен, Docker/БД не запускались.
