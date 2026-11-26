@@ -313,13 +313,13 @@ const API = '/api/v1/admin';
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
-let secret = sessionStorage.getItem('ve_admin_secret') || '';
+let secret = sessionStorage.getItem('sc_admin_secret') || '';
 let currentTab = 'overview';
 
 const SECRET_HINT = 'HMAC_SECRET должен содержать только ASCII-символы (без кириллицы и пробелов)';
 const validSecret = value => /^[\x21-\x7E]+$/.test(value);
 function forgetSecret() {
-  sessionStorage.removeItem('ve_admin_secret');
+  sessionStorage.removeItem('sc_admin_secret');
   secret = '';
 }
 
@@ -374,7 +374,7 @@ async function api(path, options = {}) {
   opts.headers = headers;
   const res = await fetch(API + path, opts);
   if (res.status === 401 || res.status === 403) {
-    sessionStorage.removeItem('ve_admin_secret');
+    sessionStorage.removeItem('sc_admin_secret');
     secret = '';
     showLogin();
     throw new Error('Нет доступа. Проверьте HMAC_SECRET.');
@@ -690,7 +690,7 @@ $('#loginBtn').addEventListener('click', () => {
   secret = $('#secret').value.trim();
   if (!secret) return toast('Введите HMAC_SECRET', true);
   if (!validSecret(secret)) return toast(SECRET_HINT, true);
-  sessionStorage.setItem('ve_admin_secret', secret);
+  sessionStorage.setItem('sc_admin_secret', secret);
   $('#login').hidden = true;
   $('#app').hidden = false;
   activate(currentTab);
@@ -701,7 +701,7 @@ $('#secret').addEventListener('keydown', e => {
 });
 
 $('#logoutBtn').addEventListener('click', () => {
-  sessionStorage.removeItem('ve_admin_secret');
+  sessionStorage.removeItem('sc_admin_secret');
   secret = '';
   $('#secret').value = '';
   showLogin();
@@ -721,7 +721,7 @@ $('#contactsSaveBtn').addEventListener('click', saveContacts);
 
 (function init() {
   const now = new Date();
-  $('#workMonth').value = now.toISOString().slice(0, 7);
+  $('#workMonth').value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   if (secret) {
     if (!validSecret(secret)) {
       forgetSecret();

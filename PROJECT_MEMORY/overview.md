@@ -31,11 +31,12 @@
 
 Переменные окружения:
 - backend: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`,
-  `HMAC_SECRET` (пароль веб-админки, заголовок `x-admin-secret`).
+  `HMAC_SECRET` (пароль веб-админки `x-admin-secret` и подпись клиентских
+  запросов `x-client-token`).
 - Redis/Celery: `REDIS_URL` — брокер для `celery_worker` и polling-кэш VK-бота.
-- MinIO: `MINIO_ACCESS_KEY`/`MINIO_SECRET_KEY` использует только сервис `minio`
-  в compose; кодом проекта не применяется. `ENCRYPTION_KEY` зарезервирован,
-  шифрования нет. `BACKEND_INTERNAL_URL` нужен VK-боту.
+- MinIO: `MINIO_ACCESS_KEY`/`MINIO_SECRET_KEY` использует только сервис `minio`;
+  `MINIO_ENDPOINT`/`MINIO_BUCKET_NAME` в коде не читаются. `ENCRYPTION_KEY`
+  зарезервирован, шифрования нет. `BACKEND_INTERNAL_URL` нужен VK-боту.
 - VK: `VK_GROUP_TOKEN`, `VK_GROUP_ID` (для `messages.send` и `group_id`),
   `ADMIN_VK_ID` — VK id администратора для уведомлений; без него нотификации
   пишут только предупреждение в лог.
