@@ -186,6 +186,7 @@ async def admin_merge_clients(payload: ClientMerge, db: AsyncSession = Depends(g
     if not from_client or not to_client:
         raise HTTPException(status_code=404, detail="Client not found")
     await merge_client_into(db, from_client=from_client, to_client=to_client)
+    await db.commit()
     await db.refresh(to_client)
     return await _client_dict(to_client, db)
 

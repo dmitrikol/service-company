@@ -131,22 +131,29 @@ async def create_appointment(
     client = (await db.execute(select(Client).where(Client.user_id == user.id))).scalars().first()
     if not client:
         raise HTTPException(status_code=400, detail="No client profile")
-    # Телефон клиент вводит один раз при записи — сохраняем на профиль,
-    # чтобы он был в карточке работы
+
+    # Телефон клиент вводит один раз при записи — запоминаем его на профиле,
+    # но склейку делаем только после всех проверок: merge меняет данные в БД,
+    # и при 409 по слоту не должно остаться полуслитых карточек.
+    matched_client = None
     if phone and phone.strip():
         phone = phone.strip()
-        # Тот же человек на другой платформе: поднимаем его карточку по номеру
-        # телефона и переносим аккаунты/машины/записи к ней
-        matched = await find_client_by_phone(db, phone)
-        if matched and matched.id != client.id:
-            await merge_client_into(db, from_client=client, to_client=matched)
-            client = matched
-        client.phone = phone
+        matched_client = await find_client_by_phone(db, phone)
+        if matched_client and matched_client.id == client.id:
+            matched_client = None
+    target_client = matched_client or client
 
-    # Машина должна принадлежать текущему клиенту — иначе можно было бы
-    # записаться на чужой car_id, просто подобрав число
+    # Машина должна принадлежать текущему клиенту (или тому, к кому он будет
+    # приклеен), иначе можно записаться на чужой car_id, подобрав число.
+    client_ids = [client.id]
+    if target_client.id != client.id:
+        client_ids.append(target_client.id)
     car = (await db.execute(
-        select(Car).where(Car.id == car_id, Car.client_id == client.id, Car.is_active.is_(True))
+        select(Car).where(
+            Car.id == car_id,
+            Car.client_id.in_(client_ids),
+            Car.is_active.is_(True),
+        )
     )).scalars().first()
     if not car:
         raise HTTPException(status_code=404, detail="Car not found")
@@ -177,6 +184,14 @@ async def create_appointment(
     conflicts = (await db.execute(conflict_stmt)).scalars().all()
     if conflicts:
         raise HTTPException(status_code=409, detail="Time slot is already taken")
+
+    # Все проверки пройдены — теперь безопасно склеивать карточки и писать запись
+    # одной транзакцией. При ошибке выше get_db откатит сессию целиком.
+    if matched_client:
+        await merge_client_into(db, from_client=client, to_client=matched_client)
+        client = matched_client
+    if phone and phone.strip():
+        client.phone = phone
 
     appointment = Appointment(
         client_id=client.id,

@@ -80,6 +80,9 @@ async def merge_client_into(db: AsyncSession, from_client: Client, to_client: Cl
     Используется, когда телефон ввёл клиент платформы, у которого ещё нет
     номера: аккаунты, машины, записи и работы переносятся на найденного по
     телефону клиента, чтобы карточка осталась одна.
+
+    Сессию не коммитит: вызывающий код решает, когда зафиксировать изменения,
+    чтобы ошибка позже в запросе не оставила частично слитую карточку.
     """
     if from_client.id == to_client.id:
         return
@@ -107,4 +110,3 @@ async def merge_client_into(db: AsyncSession, from_client: Client, to_client: Cl
     if not to_client.name or to_client.name == "Клиент":
         to_client.name = from_client.name or to_client.name
     await db.delete(from_client)
-    await db.commit()
