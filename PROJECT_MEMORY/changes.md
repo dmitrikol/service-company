@@ -183,3 +183,8 @@ Docker/БД не запускались.
 по умолчанию считается в локальной таймзоне браузера. Уточнён перечень переменных
 в `PROJECT_MEMORY/overview.md`. Файлы: `.env.example`, `README.md`,
 `backend/app/web/admin.html`, `PROJECT_MEMORY/overview.md`.
+
+[2026-11-26] Уточнена архитектурная схема в README: убрана сплошная строка
+MinIO, добавлены сервис `migrate` и подпись клиентских запросов
+`x-client-token`. В разделе бэкапов уточнено назначение тома Redis. Файлы:
+`README.md`, `PROJECT_MEMORY/changes.md`.

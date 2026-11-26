@@ -28,16 +28,16 @@
 ```mermaid
 flowchart LR
   client[Клиент VK] -->|сообщения и кнопки| vkbot[vk_bot<br/>vkbottle]
-  admin[Администратор<br/>браузер] -->|/admin и /api/v1/admin| backend[backend<br/>FastAPI]
-  vkbot -->|/api/v1| backend
+  admin[Администратор<br/>браузер] -->|/admin и x-admin-secret| backend[backend<br/>FastAPI]
+  vkbot -->|/api/v1 и x-client-token| backend
+  migrate[migrate<br/>Alembic] -->|upgrade head| pg[(PostgreSQL 15)]
   backend --> orm[SQLAlchemy async]
-  orm --> pg[(PostgreSQL 15)]
+  orm --> pg
   backend --> redis[(Redis 7)]
   worker[celery_worker<br/>Celery + Beat] --> pg
   worker --> redis
   worker -->|messages.send| vkapi[VK API]
   vkbot -->|уведомления админу| vkapi
-  backend -.->|в compose, кодом не используется| minio[(MinIO)]
 ```
 
 ## Стек технологий
@@ -214,9 +214,9 @@ docker run --rm python:3.11-slim python -c "import secrets; print(secrets.token_
 ## Резервное копирование
 
 Минимальный набор: том `postgres_data` и файл `.env`. Том `minio_data` тоже стоит
-сохранять, хотя сейчас MinIO кодом не используется. Том `redis_data` — кэш и
-брокер, его можно не бэкапить (потеряется только временное состояние меню
-клиентов и очереди Celery).
+сохранять, хотя сейчас MinIO кодом не используется. Том `redis_data` — брокер
+Celery; его можно не бэкапить (потеряется только очередь задач, которая будет
+создана заново).
 
 Логический дамп Postgres (можно делать на работающем сервисе):
 
