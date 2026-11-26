@@ -160,3 +160,12 @@ celery, minio и vkbottle. Обновлены `README.md` и `PROJECT_MEMORY/ove
 `b8c9d0e1f2a3`. Файлы: `celery_worker/tasks.py`, `backend/app/models/appointment.py`,
 `backend/migrations/versions/`, `PROJECT_MEMORY/overview.md`. Синтаксис проверен,
 Docker/БД не запускались.
+
+[2026-11-26] Этап 9 исправлений по аудиту: клиентские запросы подписываются.
+Бэкенд требует `x-client-token` — HMAC-SHA256 от `v1:{platform}:{user_id}` на
+`HMAC_SECRET` — на 12 приватных эндпоинтах клиента; публичные `/schedule`,
+`/services`, `/contacts` и `/appointments/slots` остаются открытыми. VK-бот
+добавляет подпись ко всем запросам. Файлы: `backend/app/core/security.py`,
+`backend/app/api/v1/{clients,cars,appointments}.py`, `bot_vk/{config,api_client}.py`,
+`.env.example`, `README.md`, `PROJECT_MEMORY/overview.md`. Синтаксис проверен,
+Docker/БД не запускались.

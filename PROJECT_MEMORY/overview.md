@@ -120,7 +120,9 @@ PROJECT_MEMORY/           # overview.md, changes.md, README.md
 
 ## API (`/api/v1`)
 
-Клиентские запросы идут с заголовками `platform: vk` и `user-id`. Админ-эндпоинты
+Клиентские запросы идут с заголовками `platform: vk` и `user-id`, дополнительно
+подписанными `x-client-token` (HMAC-SHA256 от `v1:{platform}:{user_id}` на
+`HMAC_SECRET`); отсутствующая или неверная подпись даёт 401. Админ-эндпоинты
 защищены `require_admin`: только `x-admin-secret: <HMAC_SECRET>`. Пустой секрет
 не проходит. JWT и подписи bodies нет.
 

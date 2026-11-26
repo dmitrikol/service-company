@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
+from app.core.security import require_client
 from app.models.car import Car
 from app.models.client import Client
 from app.models.user import User, PlatformAccount
@@ -22,6 +23,7 @@ def _car_dict(c: Car) -> dict:
 async def get_my_cars(
     platform: str = Header(...),
     user_id: str = Header(...),
+    client_identity: None = Depends(require_client),
     db: AsyncSession = Depends(get_db)
 ):
     # Находим user по платформе
@@ -43,6 +45,7 @@ async def add_car(
     comment: str = None,
     platform: str = Header(...),
     user_id: str = Header(...),
+    client_identity: None = Depends(require_client),
     db: AsyncSession = Depends(get_db)
 ):
     user = await _get_user_by_platform(db, platform, user_id)
@@ -89,6 +92,7 @@ async def update_car(
     comment: str = None,
     platform: str = Header(...),
     user_id: str = Header(...),
+    client_identity: None = Depends(require_client),
     db: AsyncSession = Depends(get_db)
 ):
     """Редактирование своей машины (например, исправить опечатку в номере/VIN)."""
@@ -113,6 +117,7 @@ async def delete_car(
     car_id: int,
     platform: str = Header(...),
     user_id: str = Header(...),
+    client_identity: None = Depends(require_client),
     db: AsyncSession = Depends(get_db)
 ):
     """Мягкое удаление своей машины: скрывает из списка, история записей сохраняется."""

@@ -1,31 +1,45 @@
 import asyncio
+import hashlib
+import hmac
 import json
 import logging
 
 import aiohttp
 
-from config import BACKEND_INTERNAL_URL
+from config import BACKEND_INTERNAL_URL, HMAC_SECRET
 
 log = logging.getLogger("vk_bot.api_client")
 
 REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=10, connect=5)
 BACKEND_UNAVAILABLE = {"detail": "backend недоступен"}
+TOKEN_VERSION = "v1"
 
 
 class ApiClient:
     """Обёртка над backend REST API для клиентского сценария VK-бота.
 
     Backend работает по заголовкам platform/user-id; этот клиент передаёт
-    platform="vk" и покрывает используемые ботом методы. Все запросы имеют
-    таймаут, а не-успешные HTTP-статусы пишутся в лог.
+    platform="vk" и подписывает запросы заголовком x-client-token. Все запросы
+    имеют таймаут, а не-успешные HTTP-статусы пишутся в лог.
     """
 
     def __init__(self, user_id: str):
         self.base_url = BACKEND_INTERNAL_URL.rstrip("/")
         self.user_id = user_id
+        if not HMAC_SECRET:
+            log.error("HMAC_SECRET не задан: backend отклонит запросы бота (401)")
+
+    def _client_token(self) -> str:
+        """Подпись (platform, user-id) тем же алгоритмом, что и в backend."""
+        message = f"{TOKEN_VERSION}:vk:{self.user_id}".encode("utf-8")
+        return hmac.new(HMAC_SECRET.encode("utf-8"), message, hashlib.sha256).hexdigest()
 
     def _headers(self):
-        return {"platform": "vk", "user-id": self.user_id}
+        return {
+            "platform": "vk",
+            "user-id": self.user_id,
+            "x-client-token": self._client_token(),
+        }
 
     async def _request(self, method: str, path: str, params: dict | None = None):
         """Возвращает (http_status, json_body) даже при сетевой ошибке."""

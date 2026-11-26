@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Header, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
+from app.core.security import require_client
 from app.models.user import User, PlatformAccount
 from app.models.client import Client
 from app.services.clients import find_client_by_phone, attach_account_to_client, merge_client_into
@@ -12,6 +13,7 @@ router = APIRouter(tags=["clients"])
 async def get_me(
     platform: str = Header(...),   # "vk"
     user_id: str = Header(...),
+    client_identity: None = Depends(require_client),
     db: AsyncSession = Depends(get_db)
 ):
     """Профиль клиента: имя + телефон — чтобы бот знал, спрашивать ли телефон при записи."""
@@ -31,6 +33,7 @@ async def update_me(
     phone: str = None,
     platform: str = Header(...),
     user_id: str = Header(...),
+    client_identity: None = Depends(require_client),
     db: AsyncSession = Depends(get_db)
 ):
     """Клиент правит своё имя/телефон (например, сменил номер).
@@ -73,6 +76,7 @@ async def register_user(
     last_name: str = None,
     username: str = None,
     phone: str = None,
+    client_identity: None = Depends(require_client),
     db: AsyncSession = Depends(get_db)
 ):
     # Проверяем, нет ли уже такого аккаунта

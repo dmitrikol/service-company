@@ -180,12 +180,13 @@ docker compose logs -f vk_bot         # в логе должно появить�
 | `MINIO_ENDPOINT`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `MINIO_BUCKET_NAME` | MinIO; в текущем коде не используется |
 | `VK_GROUP_TOKEN`, `VK_GROUP_ID` | VK-бот и напоминания — токен сообщества и его ID |
 | `ADMIN_VK_ID` | VK id администратора (или отрицательный id беседы) для уведомлений |
-| `HMAC_SECRET` | пароль веб-админки (`x-admin-secret`) |
+| `HMAC_SECRET` | подпись клиентских запросов (`x-client-token`) и пароль веб-админки (`x-admin-secret`) |
 | `ENCRYPTION_KEY` | зарезервирован для шифрования (сейчас кодом не используется) |
 | `BACKEND_INTERNAL_URL` | внутренний URL бэкенда для бота/Celery (`http://backend:8000`) |
 
-Backend читает только `DB_*` и `HMAC_SECRET`; остальные переменные нужны
-`vk_bot`, `celery_worker` или сервису `minio`.
+Backend читает только `DB_*` и `HMAC_SECRET` (он же проверяет клиентские токены
+и пароль админки); остальные переменные нужны `vk_bot`, `celery_worker` или
+сервису `minio`.
 
 ### Генерация секретов
 

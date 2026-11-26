@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
+from app.core.security import require_client
 from app.models.appointment import Appointment
 from app.models.service import Service
 from app.models.car import Car
@@ -91,6 +92,7 @@ async def get_busy_slots(
 async def get_my_appointments(
     platform: str = Header(...),
     user_id: str = Header(...),
+    client_identity: None = Depends(require_client),
     db: AsyncSession = Depends(get_db)
 ):
     user = await _get_user(db, platform, user_id)
@@ -125,6 +127,7 @@ async def create_appointment(
     phone: str = None,
     platform: str = Header(...),
     user_id: str = Header(...),
+    client_identity: None = Depends(require_client),
     db: AsyncSession = Depends(get_db)
 ):
     user = await _get_user(db, platform, user_id)
@@ -210,6 +213,7 @@ async def cancel_my_appointment(
     appointment_id: int,
     platform: str = Header(...),
     user_id: str = Header(...),
+    client_identity: None = Depends(require_client),
     db: AsyncSession = Depends(get_db)
 ):
     """Отмена клиентом своей записи (только пока она ещё не началась)."""
@@ -243,6 +247,7 @@ async def reschedule_my_appointment(
     start_datetime: datetime,
     platform: str = Header(...),
     user_id: str = Header(...),
+    client_identity: None = Depends(require_client),
     db: AsyncSession = Depends(get_db)
 ):
     """Перенос своей записи на другое время (вместо отмены + записи заново)."""
@@ -302,6 +307,7 @@ async def reschedule_my_appointment(
 async def get_my_works(
     platform: str = Header(...),
     user_id: str = Header(...),
+    client_identity: None = Depends(require_client),
     db: AsyncSession = Depends(get_db)
 ):
     """История выполненных работ клиента — «мини-история обслуживания»."""
