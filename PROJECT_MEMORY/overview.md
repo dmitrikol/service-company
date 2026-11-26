@@ -140,8 +140,9 @@ PROJECT_MEMORY/           # overview.md, changes.md, README.md
 Админ (`/admin`, всё под `Depends(require_admin)`):
 - clients: `GET/POST /clients`, `PATCH/DELETE /clients/{id}`,
   `POST /clients/merge`, `GET /clients/export`;
-- services: `GET/POST /services`, `PATCH /services/{id}`,
-  `GET /services/{id}/price-history`, `GET /services/{id}/export`;
+- services: `GET/POST /services`, `PATCH /services/{id}` (название не пустое,
+  цена ≥ 0, длительность — целое > 0), `GET /services/{id}/price-history`,
+  `GET /services/{id}/export`;
 - appointments: `GET /appointments` (включая `client_vk_id`),
   `PATCH /appointments/{id}` (при `status=completed` нужна фактическая цена → `CompletedWork`);
 - works: `GET /works?month=YYYY-MM`, `GET /works/export`, `GET/PATCH /works/{id}`

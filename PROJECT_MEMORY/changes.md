@@ -169,3 +169,9 @@ Docker/БД не запускались.
 `backend/app/api/v1/{clients,cars,appointments}.py`, `bot_vk/{config,api_client}.py`,
 `.env.example`, `README.md`, `PROJECT_MEMORY/overview.md`. Синтаксис проверен,
 Docker/БД не запускались.
+
+[2026-11-26] Этап 10 исправлений по аудиту: валидация услуг. В админ-API название
+услуги не может быть пустым, цена «от» не отрицательна, длительность — целое число
+больше нуля; веб-админка проверяет те же условия до отправки. Файлы:
+`backend/app/api/v1/admin.py`, `backend/app/web/admin.html`,
+`PROJECT_MEMORY/overview.md`. Синтаксис проверен, Docker/БД не запускались.

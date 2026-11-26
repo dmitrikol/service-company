@@ -514,7 +514,9 @@ const addService = secure(async () => {
   const name = $('#svcName').value.trim();
   const price = Number($('#svcPrice').value);
   const duration = Number($('#svcDuration').value || 60);
-  if (!name || !price) return toast('Заполните название и цену', true);
+  if (!name || !Number.isFinite(price) || price < 0 || !Number.isInteger(duration) || duration <= 0) {
+    return toast('Название обязательно; цена ≥ 0, длительность — целое число > 0', true);
+  }
   await api('/services', {
     method: 'POST',
     body: { name, price_from: price, duration_minutes: duration, description: '', is_pdr: $('#svcPdr').checked }
@@ -541,6 +543,9 @@ $('#servicesTable').addEventListener('click', secure(async (e) => {
   const name = prompt('Название', tr.children[1].firstChild.textContent.trim()) || '';
   const price = Number(prompt('Цена от', String(tr.children[2].textContent.replace(/[^\d.,]/g, '').replace(',', '.'))) || 0);
   const duration = Number(prompt('Длительность, мин', tr.children[3].textContent.replace(/\D/g, '')) || 60);
+  if (!name || !Number.isFinite(price) || price < 0 || !Number.isInteger(duration) || duration <= 0) {
+    return toast('Название обязательно; цена ≥ 0, длительность — целое число > 0', true);
+  }
   const isPdr = confirm('Это услуга PDR (отдельное расписание)?') ? 1 : 0;
   const isActive = confirm('Услуга активна?') ? 1 : 0;
   await api('/services/' + id, {

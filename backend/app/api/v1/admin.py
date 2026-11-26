@@ -47,21 +47,21 @@ async def require_admin(
 
 
 class ServiceCreate(BaseModel):
-    name: str
-    description: str = None
-    price_from: float
-    duration_minutes: int
+    name: str = Field(..., min_length=1)
+    description: str | None = None
+    price_from: float = Field(..., ge=0)
+    duration_minutes: int = Field(..., gt=0)
     is_active: bool = True
     is_pdr: bool = False
 
 
 class ServiceUpdate(BaseModel):
-    name: str = None
-    description: str = None
-    price_from: float = None
-    duration_minutes: int = None
-    is_active: bool = None
-    is_pdr: bool = None
+    name: str | None = Field(default=None, min_length=1)
+    description: str | None = None
+    price_from: float | None = Field(default=None, ge=0)
+    duration_minutes: int | None = Field(default=None, gt=0)
+    is_active: bool | None = None
+    is_pdr: bool | None = None
 
 
 class AppointmentUpdate(BaseModel):
