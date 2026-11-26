@@ -51,6 +51,8 @@
       border-radius: 14px;
     }
     .login-card h1 { margin-top: 0; font-size: 20px; }
+    .secret-field { display: block; }
+    .secret-field input { margin-top: 10px; }
     .hint { color: var(--muted); font-size: 12px; }
     header {
       display: flex;
@@ -174,7 +176,7 @@
 
 <div id="login" class="login-card">
   <h1>Service Company — админка</h1>
-  <label>Пароль админки<br><input id="secret" type="password" autocomplete="current-password" style="width:100%"></label>
+  <label class="secret-field">Пароль админки<input id="secret" type="password" autocomplete="current-password" style="width:100%"></label>
   <p><button class="primary" id="loginBtn" style="width:100%;margin-top:12px">Войти</button></p>
 </div>
 

@@ -198,3 +198,6 @@ HTTPS, описание HMAC_SECRET, пояснение про напомина�
 сведения остались в документации; правило не выносить такие подсказки в frontend
 добавлено в `PROJECT_MEMORY/README.md`. Файлы: `backend/app/web/admin.html`,
 `PROJECT_MEMORY/README.md`.
+
+[2026-11-26] Поле ввода пароля на экране входа отделено от подписи отступом.
+Файл: `backend/app/web/admin.html`.
