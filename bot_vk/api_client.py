@@ -1,12 +1,23 @@
+import asyncio
+import json
+import logging
+
 import aiohttp
+
 from config import BACKEND_INTERNAL_URL
+
+log = logging.getLogger("vk_bot.api_client")
+
+REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=10, connect=5)
+BACKEND_UNAVAILABLE = {"detail": "backend недоступен"}
 
 
 class ApiClient:
     """Обёртка над backend REST API для клиентского сценария VK-бота.
 
     Backend работает по заголовкам platform/user-id; этот клиент передаёт
-    platform="vk" и покрывает используемые ботом методы.
+    platform="vk" и покрывает используемые ботом методы. Все запросы имеют
+    таймаут, а не-успешные HTTP-статусы пишутся в лог.
     """
 
     def __init__(self, user_id: str):
@@ -16,100 +27,80 @@ class ApiClient:
     def _headers(self):
         return {"platform": "vk", "user-id": self.user_id}
 
+    async def _request(self, method: str, path: str, params: dict | None = None):
+        """Возвращает (http_status, json_body) даже при сетевой ошибке."""
+        try:
+            async with aiohttp.ClientSession(timeout=REQUEST_TIMEOUT) as session:
+                async with session.request(
+                    method,
+                    self.base_url + path,
+                    headers=self._headers(),
+                    params=params,
+                ) as resp:
+                    raw = await resp.text()
+                    try:
+                        data = json.loads(raw) if raw else {}
+                    except (ValueError, TypeError):
+                        data = {"detail": "некорректный ответ backend"}
+                    if not 200 <= resp.status < 300:
+                        log.warning(
+                            "backend %s %s вернул HTTP %s", method, path, resp.status
+                        )
+                    return resp.status, data
+        except (aiohttp.ClientError, asyncio.TimeoutError):
+            log.warning("backend %s %s недоступен или не ответил вовремя", method, path)
+            return 0, dict(BACKEND_UNAVAILABLE)
+
+    async def _data(self, method: str, path: str, params: dict | None = None):
+        """Для методов, где вызываему важен только результат (список/словарь)."""
+        _, data = await self._request(method, path, params)
+        return data
+
     async def register(self, first_name=None, last_name=None, username=None, phone=None):
         params = {}
         if first_name: params["first_name"] = first_name
         if last_name: params["last_name"] = last_name
         if username: params["username"] = username
         if phone: params["phone"] = phone
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                f"{self.base_url}/api/v1/users/register",
-                headers=self._headers(), params=params
-            ) as resp:
-                return await resp.json()
+        return await self._data("POST", "/api/v1/users/register", params)
 
     async def get_me(self):
-        async with aiohttp.ClientSession() as session:
-            async with session.get(
-                f"{self.base_url}/api/v1/clients/me", headers=self._headers()
-            ) as resp:
-                return await resp.json()
+        return await self._data("GET", "/api/v1/clients/me")
 
     async def get_services(self):
-        async with aiohttp.ClientSession() as session:
-            async with session.get(
-                f"{self.base_url}/api/v1/services", headers=self._headers()
-            ) as resp:
-                return await resp.json()
+        return await self._data("GET", "/api/v1/services")
 
     async def get_my_cars(self):
-        async with aiohttp.ClientSession() as session:
-            async with session.get(
-                f"{self.base_url}/api/v1/cars", headers=self._headers()
-            ) as resp:
-                return await resp.json()
+        return await self._data("GET", "/api/v1/cars")
 
     async def add_car(self, brand, model):
-        params = {"brand": brand, "model": model}
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                f"{self.base_url}/api/v1/cars", headers=self._headers(), params=params
-            ) as resp:
-                return await resp.json()
+        return await self._data("POST", "/api/v1/cars", {"brand": brand, "model": model})
 
     async def get_schedule(self):
-        async with aiohttp.ClientSession() as session:
-            async with session.get(
-                f"{self.base_url}/api/v1/schedule", headers=self._headers()
-            ) as resp:
-                return await resp.json()
+        return await self._data("GET", "/api/v1/schedule")
 
     async def get_busy_slots(self, date_str: str, service_id: int = None):
         params = {"date": date_str}
         if service_id is not None:
             params["service_id"] = service_id
-        async with aiohttp.ClientSession() as session:
-            async with session.get(
-                f"{self.base_url}/api/v1/appointments/slots",
-                headers=self._headers(), params=params
-            ) as resp:
-                return await resp.json()
+        return await self._data("GET", "/api/v1/appointments/slots", params)
 
     async def create_appointment(self, car_id, service_id, start_datetime, phone=None):
         params = {"car_id": car_id, "service_id": service_id, "start_datetime": start_datetime}
         if phone:
             params["phone"] = phone
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                f"{self.base_url}/api/v1/appointments",
-                headers=self._headers(), params=params
-            ) as resp:
-                data = await resp.json()
-                return resp.status, data
+        return await self._request("POST", "/api/v1/appointments", params)
 
     async def get_my_appointments(self):
-        async with aiohttp.ClientSession() as session:
-            async with session.get(
-                f"{self.base_url}/api/v1/appointments/my", headers=self._headers()
-            ) as resp:
-                return await resp.json()
+        return await self._data("GET", "/api/v1/appointments/my")
 
     async def cancel_appointment(self, appointment_id: int):
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                f"{self.base_url}/api/v1/appointments/{appointment_id}/cancel",
-                headers=self._headers()
-            ) as resp:
-                data = await resp.json()
-                return resp.status, data
+        return await self._request(
+            "POST", f"/api/v1/appointments/{appointment_id}/cancel"
+        )
 
     async def get_my_works(self):
-        async with aiohttp.ClientSession() as session:
-            async with session.get(
-                f"{self.base_url}/api/v1/works/my", headers=self._headers()
-            ) as resp:
-                return await resp.json()
+        return await self._data("GET", "/api/v1/works/my")
 
     async def update_profile(self, name: str = None, phone: str = None):
         params = {}
@@ -117,16 +108,7 @@ class ApiClient:
             params["name"] = name
         if phone is not None:
             params["phone"] = phone
-        async with aiohttp.ClientSession() as session:
-            async with session.patch(
-                f"{self.base_url}/api/v1/clients/me",
-                headers=self._headers(), params=params
-            ) as resp:
-                return await resp.json()
+        return await self._data("PATCH", "/api/v1/clients/me", params)
 
     async def get_contacts(self):
-        async with aiohttp.ClientSession() as session:
-            async with session.get(
-                f"{self.base_url}/api/v1/contacts", headers=self._headers()
-            ) as resp:
-                return await resp.json()
+        return await self._data("GET", "/api/v1/contacts")

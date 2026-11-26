@@ -88,7 +88,7 @@ backend/app/
   migrations/             # Alembic, 9 ревизий
 bot_vk/
   bot.py                  # диспетчер по тексту кнопок + пошаговые сценарии
-  api_client.py           # клиент backend с platform="vk"
+  api_client.py           # клиент backend с platform="vk", таймаут 10 c и лог не-2xx
   keyboards.py            # обычные клавиатуры, ≤4 кнопки в ряд, лимит подписи 40
   state.py                # сессии в памяти процесса
   schedule_utils.py       # доступные даты/время
