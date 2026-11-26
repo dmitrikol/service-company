@@ -1,10 +1,13 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Text, UniqueConstraint
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from .base import Base
 
 class CompletedWork(Base):
     __tablename__ = "completed_works"
+    __table_args__ = (
+        UniqueConstraint("appointment_id", name="uq_completed_works_appointment_id"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     appointment_id = Column(Integer, ForeignKey("appointments.id"), nullable=True)  # может быть создана вручную

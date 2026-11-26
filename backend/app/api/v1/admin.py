@@ -1,9 +1,10 @@
 import hmac
 from datetime import date, datetime, timedelta, timezone
+from typing import Literal
 from urllib.parse import quote
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from fastapi import APIRouter, Depends, Header, HTTPException, Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -73,8 +74,8 @@ class ServiceUpdate(BaseModel):
 
 
 class AppointmentUpdate(BaseModel):
-    status: str = None
-    actual_price: float = None  # фактическая цена за работу (при завершении)
+    status: Literal["booked", "completed", "cancelled", "no_show"] | None = None
+    actual_price: float | None = Field(default=None, ge=0)  # фактическая цена за работу
 
 
 # ─── Клиенты ───
@@ -414,17 +415,26 @@ async def admin_update_appointment(appt_id: int, payload: AppointmentUpdate,
 
     if payload.status is not None:
         a.status = payload.status
-        if a.status == "cancelled":
-            a.cancelled_by = "master"
+        a.cancelled_by = "master" if a.status == "cancelled" else None
 
-    # При завершении записи фиксируем работу в журнале (если ещё не зафиксирована)
+    # При завершении записи фиксируем работу в журнале. Повторное завершение
+    # не создаёт копию, но позволяет скорректировать фактическую цену.
     if a.status == "completed":
         existing = (await db.execute(
             select(CompletedWork).where(CompletedWork.appointment_id == a.id)
         )).scalar_one_or_none()
-        if not existing:
+        if existing:
+            if payload.actual_price is not None:
+                existing.actual_price = payload.actual_price
+                existing.total_amount = payload.actual_price
+        else:
             service = await db.get(Service, a.service_id)
             price = payload.actual_price if payload.actual_price is not None else (service.price_from if service else 0.0)
+            now = datetime.now(timezone.utc)
+            end = a.end_datetime
+            if end is not None and end.tzinfo is None:
+                end = end.replace(tzinfo=timezone.utc)
+            performed_at = min(end, now) if end is not None else now
             db.add(CompletedWork(
                 appointment_id=a.id,
                 client_id=a.client_id,
@@ -433,7 +443,7 @@ async def admin_update_appointment(appt_id: int, payload: AppointmentUpdate,
                 description=service.description if service else None,
                 actual_price=price,
                 total_amount=price,
-                performed_at=a.end_datetime or func.now(),
+                performed_at=performed_at,
             ))
 
     await db.commit()
@@ -631,7 +641,8 @@ async def admin_stats(days: int = None, db: AsyncSession = Depends(get_db)):
     appt_rows = (await db.execute(appt_stmt)).all()
     appt = {"total": 0, "booked": 0, "completed": 0, "cancelled": 0, "no_show": 0}
     for status, cnt in appt_rows:
-        appt[status] = cnt
+        if status in appt:
+            appt[status] = cnt
         appt["total"] += cnt
 
     work_stmt = select(
