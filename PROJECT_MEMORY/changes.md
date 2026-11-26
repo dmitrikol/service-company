@@ -129,3 +129,11 @@ compose как S3-инфраструктура, но текущим кодом �
 команда `pip install` получила `--index-url "$PIP_INDEX_URL"`; аргументы сборки
  из `docker-compose.yml` перестали игнорироваться. Проверено через `docker compose
  config --quiet`; образы не пересобирались.
+
+[2026-11-26] Этап 5 исправлений по аудиту: гонка миграций на свежем деплое.
+Добавлены healthcheck для PostgreSQL, Redis и backend и одноразовый сервис
+`migrate`, который выполняет `alembic upgrade head` до старта backend, vk_bot и
+celery_worker. Скрипты запуска и README используют `docker compose up -d --build
+--wait`; ручной вызов Alembic больше не требуется. Файлы: `docker-compose.yml`,
+`start.bat`, `start.sh`, `README.md`, `PROJECT_MEMORY/overview.md`.
+Проверено через `docker compose config --quiet`; контейнеры не запускались.

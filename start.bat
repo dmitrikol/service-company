@@ -17,28 +17,13 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo Starting Vmatiy Element (Docker Compose)...
-docker compose up -d --build
+echo Starting Service Company (Docker Compose)...
+docker compose up -d --build --wait
 if errorlevel 1 (
-    echo ERROR: "docker compose up" failed, see the output above.
+    echo ERROR: "docker compose up --wait" failed, see the output above.
     pause
     exit /b 1
 )
-
-echo Waiting for the database...
-set COUNT=0
-
-:wait_loop
-docker compose exec -T postgres pg_isready -U autoservice >nul 2>nul
-if %errorlevel% equ 0 goto db_ready
-set /a COUNT+=1
-if %COUNT% geq 30 goto db_ready
-ping -n 2 127.0.0.1 >nul
-goto wait_loop
-
-:db_ready
-echo Applying database migrations...
-docker compose exec -T backend alembic upgrade head
 
 echo.
 echo Done! Everything is running.

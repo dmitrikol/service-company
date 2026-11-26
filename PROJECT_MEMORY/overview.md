@@ -20,6 +20,7 @@
 | `postgres` | postgres:15 | 5432 | БД `autoservice` |
 | `redis` | redis:7 | — | брокер Celery |
 | `minio` | bitnamilegacy/minio:latest | 9000/9001 | остался в compose, но в текущем коде не используется; официальный образ исчез с Docker Hub |
+| `migrate` | Alembic | — | одноразово применяет миграции после готовности PostgreSQL и до старта backend/воркера |
 | `backend` | FastAPI, SQLAlchemy(async), asyncpg, Alembic, openpyxl | 8000 | REST API (`/docs`, `/health`) + раздача веб-админки `/admin` |
 | `vk_bot` | vkbottle | — | клиентский сценарий записи + уведомления админу в VK |
 | `celery_worker` | Celery + Beat | — | напоминания о записях в VK (две стадии, каждые 5 минут) |
@@ -44,9 +45,10 @@
 ## Запуск на этом ПК (2026-11-25)
 
 - Windows 11 IoT LTSC + WSL2 (`Ubuntu`) + Docker Desktop 29.9.3.
-- `docker compose up -d --build` поднимает 6 сервисов.
-  `alembic upgrade head` выполнен вручную (`docker compose exec -T backend alembic upgrade head`),
-  все 9 ревизий применены.
+- `docker compose up -d --build --wait` поднимает сервисы: PostgreSQL и Redis имеют
+  healthcheck, сервис `migrate` применяет Alembic-ревизии, backend/vk_bot/celery_worker
+  стартуют только после успешных миграций. Ручной `alembic upgrade head` больше не нужен.
+  В локальной БД применены все 10 ревизий (включая уникальность `completed_works`).
 - `GET /health` → `{"status":"ok"}`; `GET /admin` → веб-админка (HTTP 200);
   `/api/v1/schedule` отдаёт `timezone: "UTC"`, `/api/v1/services` → `[]`,
   `/api/v1/contacts` — дефолтный текст.

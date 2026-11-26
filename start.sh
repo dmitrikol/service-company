@@ -15,18 +15,7 @@ if ! command -v docker &> /dev/null; then
 fi
 
 echo "🚀 Запускаю Service Company (Docker Compose)..."
-docker compose up -d --build
-
-echo "⏳ Жду базу данных..."
-for i in $(seq 1 30); do
-    if docker compose exec -T postgres pg_isready -U autoservice > /dev/null 2>&1; then
-        break
-    fi
-    sleep 1
-done
-
-echo "🗄  Применяю миграции..."
-docker compose exec -T backend alembic upgrade head
+docker compose up -d --build --wait
 
 echo ""
 echo "✅ Всё запущено!"

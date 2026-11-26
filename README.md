@@ -61,6 +61,7 @@ flowchart LR
 | `postgres` | postgres:15 | 5432 | БД `autoservice` |
 | `redis` | redis:7 | — | кэш/брокер Celery |
 | `minio` | bitnamilegacy/minio | 9000 / 9001 | S3-хранилище в compose; текущим кодом не используется (9001 — консоль) |
+| `migrate` | Alembic | — | одноразово применяет миграции перед стартом backend/воркера |
 | `backend` | FastAPI, SQLAlchemy(async), Alembic | 8000 | REST API (`/docs`) + веб-админка (`/admin`) |
 | `vk_bot` | vkbottle | — | клиентский бот ВКонтакте + уведомления админу в VK |
 | `celery_worker` | Celery + Beat | — | напоминания о записях в VK |
@@ -79,13 +80,12 @@ flowchart LR
 # 1. Создать конфигурацию и указать свои секреты
 cp .env.example .env
 
-# 2. Собрать и поднять все сервисы
-docker compose up -d --build
+# 2. Собрать, применить миграции и поднять сервисы
+#    Compose дождётся готовности PostgreSQL, выполнит `alembic upgrade head`
+#    в одноразовом сервисе migrate и только после этого запустит остальные сервисы.
+docker compose up -d --build --wait
 
-# 3. Применить миграции БД (при первом запуске и после новых ревизий)
-docker compose exec backend alembic upgrade head
-
-# 4. Проверить бэкенд
+# 3. Проверить бэкенд
 curl http://localhost:8000/health          # → {"status":"ok"}
 # Swagger-документация API: http://localhost:8000/docs
 ```
