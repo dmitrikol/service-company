@@ -174,10 +174,8 @@
 
 <div id="login" class="login-card">
   <h1>Service Company — админка</h1>
-  <p class="hint">Введите <b>HMAC_SECRET</b> из <code>.env</code>. Он используется как пароль админки и передаётся в заголовке <code>x-admin-secret</code>.</p>
   <label>Пароль админки<br><input id="secret" type="password" autocomplete="current-password" style="width:100%"></label>
   <p><button class="primary" id="loginBtn" style="width:100%;margin-top:12px">Войти</button></p>
-  <p class="hint">Не открывайте эту страницу без HTTPS.</p>
 </div>
 
 <div id="app" class="wrap" hidden>
@@ -254,7 +252,6 @@
   <section id="tab-appointments" hidden>
     <div class="panel">
       <h2>Записи</h2>
-      <p class="hint">Метки напоминаний выставляются автоматически после отправки в VK.</p>
       <div class="table-scroll">
         <table>
           <thead><tr><th>ID</th><th>Начало</th><th>Клиент / VK</th><th>Авто</th><th>Услуга</th><th>Статус</th><th>Цена</th><th>Действия</th></tr></thead>
@@ -284,7 +281,6 @@
   <section id="tab-settings" hidden>
     <div class="panel">
       <h2>Расписание</h2>
-      <p class="hint">Время в полях ниже задаётся в таймзоне сервиса (<code>timezone</code>), а не UTC.</p>
       <div class="row">
         <label class="grow">Timezone<input id="setTimezone" placeholder="Europe/Moscow"></label>
         <label>Часы работы<input id="setWorkHours" placeholder="09:00-20:00"></label>
