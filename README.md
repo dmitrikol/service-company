@@ -1,8 +1,55 @@
-# «Service Company» — система записи и учёта автосервиса
+# Service Company — система записи и учёта автосервиса
 
 Клиенты записываются на услуги через VK-бота; администратор ведёт услуги, записи,
 журнал работ, статистику и расписание через веб-админку. Бэкенд — FastAPI,
 клиентский бот — vkbottle, фоновые напоминания — Celery.
+
+## Возможности
+
+- **Запись через VK:** услуга → автомобиль → дата → время → телефон → подтверждение.
+- **Отдельные очереди PDR:** обычные и PDR-услуги не занимают одни и те же слоты.
+- **Защита от двойной записи:** Postgres advisory lock на тип услуги и проверка
+  конфликтов; параллельный запрос получает `409 Conflict`.
+- **Клиенты:** склейка аккаунтов/авто/записей по телефону, профиль, мягкое удаление.
+- **Записи:** «мои записи», отмена, перенос, статусы, фактическая цена при завершении.
+- **Журнал работ:** история выполненных работ, комментарии мастера, Excel-экспорты.
+- **Веб-админка:** клиенты, услуги, записи, работы, статистика, расписание,
+  контакты; адаптирована для телефонов.
+- **Напоминания и уведомления:** две стадии напоминаний и уведомления админу —
+  через VK API.
+- **Таймзоны:** время хранится в UTC, расписание и отображение — в настройке
+  сервиса (`Europe/Moscow`, `UTC` и др.).
+
+## Архитектура
+
+```mermaid
+flowchart LR
+  client[Клиент VK] -->|сообщения и кнопки| vkbot[vk_bot<br/>vkbottle]
+  admin[Администратор<br/>браузер] -->|/admin и /api/v1/admin| backend[backend<br/>FastAPI]
+  vkbot -->|/api/v1| backend
+  backend --> orm[SQLAlchemy async]
+  orm --> pg[(PostgreSQL 15)]
+  backend --> redis[(Redis 7)]
+  worker[celery_worker<br/>Celery + Beat] --> pg
+  worker --> redis
+  worker -->|messages.send| vkapi[VK API]
+  vkbot -->|уведомления админу| vkapi
+  backend -.->|в compose, кодом не используется| minio[(MinIO)]
+```
+
+## Стек технологий
+
+- **Backend:** Python 3.11, FastAPI, Uvicorn, Pydantic / pydantic-settings,
+  SQLAlchemy 2 (async), asyncpg, Alembic, openpyxl.
+- **VK-бот:** vkbottle, aiohttp, VK API (`messages.send`).
+- **Фоновые задачи:** Celery + Beat, Redis, `pg_advisory_xact_lock`.
+- **База данных:** PostgreSQL 15, миграции Alembic, UTC в БД.
+- **Веб-админка:** ванильные HTML/CSS/JavaScript, `fetch`, `sessionStorage`,
+  адаптивный интерфейс без внешних фронтенд-зависимостей.
+- **Инфраструктура:** Docker Compose, `env_file: .env`, логи контейнеров;
+  MinIO присутствует в compose, но текущим кодом не используется.
+- **Понятия:** REST API, async/await, SQL и миграции, блокировки и конфликты записи,
+  таймзоны, склейка клиентов, soft delete, секреты и бэкапы.
 
 ## Сервисы
 
@@ -60,8 +107,8 @@ curl http://localhost:8000/health          # → {"status":"ok"}
 ## Установка VK-бота
 
 VK-бот даёт клиентам записаться на услугу прямо в сообществе ВКонтакте
-(услуга → автомобиль → дата → время → телефон → подтверждение). Это основной
-канал проекта. Управление сервисом — через веб-админку `http://localhost:8000/admin`;
+(услуга → автомобиль → дата → время → телефон → подтверждение). Управление
+сервисом — через веб-админку `http://localhost:8000/admin`;
 админ-панели внутри VK нет и не планируется. Уведомления о записях и отменах
 приходят администратору в VK (`ADMIN_VK_ID`).
 
@@ -241,6 +288,5 @@ docker compose logs -f celery_worker   # логи напоминаний
 backend/            # FastAPI: api/v1, models, services/schedule, migrations, web/admin.html
 bot_vk/             # vkbottle: клиентский бот + vk_notify.py (уведомления админу в VK)
 celery_worker/      # Celery + Beat: напоминания в VK (tasks.py)
-PROJECT_MEMORY/     # память проекта: overview.md, changes.md (лог изменений)
-docs/superpowers/   # спеки и планы фич
+PROJECT_MEMORY/     # память проекта: overview.md, README.md, changes.md (лог изменений)
 ```
