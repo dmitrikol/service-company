@@ -18,6 +18,8 @@ class Appointment(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     reminded_at = Column(DateTime(timezone=True))  # основное напоминание о записи
     reminded_soon_at = Column(DateTime(timezone=True))  # напоминание "скоро" (за 3 часа)
+    reminder_last_error_at = Column(DateTime(timezone=True))  # последняя неудачная отправка
+    reminder_failures = Column(Integer, nullable=False, default=0)  # число неудач подряд
 
     client = relationship("Client", back_populates="appointments")
     car = relationship("Car", back_populates="appointments")

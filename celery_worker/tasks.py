@@ -8,6 +8,7 @@
 """
 import asyncio
 import json
+import logging
 import os
 import random
 import urllib.parse
@@ -16,6 +17,8 @@ from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from celery import Celery
+
+log = logging.getLogger("celery.reminders")
 
 app = Celery(
     "tasks",
@@ -34,6 +37,8 @@ DB_DSN = (
 
 REMIND_DEFAULT_HOURS = 24  # за сколько часов напоминать (если не настроено)
 REMIND_DEFAULT_HOURS_2 = 3  # за сколько часов слать напоминание "скоро" (если не настроено)
+REMINDER_RETRY_BASE_MINUTES = 5  # первая повторная попытка через 5 минут
+REMINDER_RETRY_MAX_MINUTES = 60  # больше 60 минут не ждём
 
 app.conf.beat_schedule = {
     "send-appointment-reminders": {
@@ -71,6 +76,12 @@ def _window(remind_hours: float) -> timedelta:
     return timedelta(minutes=max(15.0, min(60.0, remind_hours * 15.0)))
 
 
+def _retry_delay(failures: int) -> timedelta:
+    """Задержка перед следующей попыткой: 5, 10, 20, 40, затем 60 минут."""
+    minutes = REMINDER_RETRY_BASE_MINUTES * (2 ** max(0, failures - 1))
+    return timedelta(minutes=min(REMINDER_RETRY_MAX_MINUTES, minutes))
+
+
 async def _fetch_stage(conn, remind_hours: float, mark_col: str):
     """Записи для конкретной стадии напоминания.
 
@@ -88,7 +99,9 @@ async def _fetch_stage(conn, remind_hours: float, mark_col: str):
                a.start_datetime,
                s.name                                AS service_name,
                c.brand || ' ' || c.model             AS car_name,
-               pa.external_id                        AS peer_id
+               pa.external_id                        AS peer_id,
+               a.reminder_last_error_at,
+               a.reminder_failures
         FROM appointments a
         JOIN services s              ON s.id = a.service_id
         JOIN cars c                  ON c.id = a.car_id
@@ -108,6 +121,7 @@ async def _fetch_stage(conn, remind_hours: float, mark_col: str):
 def _vk_api(method: str, **payload):
     """Прямой вызов VK API. Возвращает ``response`` или None при ошибке."""
     if not VK_GROUP_TOKEN:
+        log.warning("VK API %s: VK_GROUP_TOKEN не задан, отправка пропущена", method)
         return None
     params = {
         "access_token": VK_GROUP_TOKEN,
@@ -121,9 +135,17 @@ def _vk_api(method: str, **payload):
     try:
         with urllib.request.urlopen(req, timeout=15) as resp:
             data = json.loads(resp.read().decode("utf-8"))
-    except Exception:
+    except Exception as exc:
+        log.warning("VK API %s недоступен: %s: %s", method, type(exc).__name__, exc)
         return None
     if "error" in data:
+        err = data["error"]
+        log.error(
+            "VK API %s вернул ошибку %s: %s",
+            method,
+            err.get("error_code"),
+            err.get("error_msg"),
+        )
         return None
     return data.get("response")
 
@@ -133,6 +155,7 @@ def _send_vk(peer_id, text: str):
     try:
         peer = int(peer_id)
     except (TypeError, ValueError):
+        log.warning("Некорректный VK peer_id для напоминания: %r", peer_id)
         return None
     result = _vk_api(
         "messages.send",
@@ -140,7 +163,11 @@ def _send_vk(peer_id, text: str):
         message=text,
         random_id=random.randint(1, 2 ** 31 - 1),
     )
-    return result if isinstance(result, int) else None
+    if isinstance(result, int):
+        return result
+    if result is not None:
+        log.warning("VK messages.send вернул неожиданный ответ: %r", result)
+    return None
 
 
 def _reminder_text(start: datetime, service: str, car: str, tz=None) -> str:
@@ -166,18 +193,52 @@ def _reminder_soon_text(start: datetime, service: str, car: str, tz=None) -> str
 
 
 async def _run_stage(conn, remind_hours: float, mark_col: str, text_fn, tz=None) -> int:
-    """Одна стадия: выборка → отправка → проставление метки. Возвращает число отправленных."""
+    """Одна стадия: выборка → отправка → метка или отложенная повторная попытка."""
     rows = await _fetch_stage(conn, remind_hours, mark_col)
     sent = 0
     for r in rows:
+        now = datetime.now(timezone.utc)
+        failures = int(r["reminder_failures"] or 0)
+        last_error = r["reminder_last_error_at"]
+        if last_error is not None and last_error.tzinfo is None:
+            last_error = last_error.replace(tzinfo=timezone.utc)
+        if last_error is not None and now - last_error < _retry_delay(failures):
+            continue
+
         text = text_fn(r["start_datetime"], r["service_name"], r["car_name"], tz)
         if _send_vk(r["peer_id"], text):
             await conn.execute(
-                f"UPDATE appointments SET {mark_col} = $1 WHERE id = $2",
-                datetime.now(timezone.utc),
+                f"""
+                UPDATE appointments
+                SET {mark_col} = $1,
+                    reminder_last_error_at = NULL,
+                    reminder_failures = 0
+                WHERE id = $2
+                """,
+                now,
                 r["id"],
             )
             sent += 1
+            log.info("Напоминание отправлено: запись #%s (%s)", r["id"], mark_col)
+        else:
+            await conn.execute(
+                """
+                UPDATE appointments
+                SET reminder_last_error_at = $1,
+                    reminder_failures = COALESCE(reminder_failures, 0) + 1
+                WHERE id = $2
+                """,
+                now,
+                r["id"],
+            )
+            log.warning(
+                "Напоминание не отправлено: запись #%s (%s), неудач подряд %s, "
+                "следующая попытка не раньше чем через %s",
+                r["id"],
+                mark_col,
+                failures + 1,
+                _retry_delay(failures + 1),
+            )
     return sent
 
 
@@ -194,12 +255,20 @@ def send_reminders():
             tz = await _get_timezone(conn)
             checked_main = await _run_stage(conn, remind_hours, "reminded_at", _reminder_text, tz)
             checked_soon = await _run_stage(conn, remind_hours_2, "reminded_soon_at", _reminder_soon_text, tz)
-            return {
+            result = {
                 "checked": checked_main + checked_soon,
                 "sent": checked_main + checked_soon,
                 "main": {"checked": checked_main, "sent": checked_main},
                 "soon": {"checked": checked_soon, "sent": checked_soon},
             }
+            log.info(
+                "Напоминания: отправлено %s из %s (основные %s, скоро %s)",
+                result["sent"],
+                result["checked"],
+                checked_main,
+                checked_soon,
+            )
+            return result
         finally:
             await conn.close()
 

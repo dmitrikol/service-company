@@ -151,3 +151,12 @@ celery, minio и vkbottle. Обновлены `README.md` и `PROJECT_MEMORY/ove
 статусы пишутся в лог, сетевые ошибки возвращают понятный `detail` вместо
 зависания. Сигнатуры методов для бота сохранены. Файлы: `bot_vk/api_client.py`,
 `PROJECT_MEMORY/overview.md`. Синтаксис проверен, сервисы не запускались.
+
+[2026-11-26] Этап 8 исправлений по аудиту: напоминания перестали молча проваливаться.
+Ошибки VK API и некорректные peer_id пишутся в лог; неудачная отправка увеличивает
+`reminder_failures` и сохраняет `reminder_last_error_at`, следующие попытки идут с
+экспоненциальной задержкой 5→10→20→40→60 минут. Успешная отправка сбрасывает счётчик
+и проставляет метку напоминания. Добавлены колонки в `appointments` и миграция
+`b8c9d0e1f2a3`. Файлы: `celery_worker/tasks.py`, `backend/app/models/appointment.py`,
+`backend/migrations/versions/`, `PROJECT_MEMORY/overview.md`. Синтаксис проверен,
+Docker/БД не запускались.
