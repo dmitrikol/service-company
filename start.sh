@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Запуск бота «Вмятый Элемент» одной командой: ./start.sh
+# Запуск бота «Service Company» одной командой: ./start.sh
 set -e
 cd "$(dirname "$0")"
 
@@ -14,7 +14,7 @@ if ! command -v docker &> /dev/null; then
     exit 1
 fi
 
-echo "🚀 Запускаю Вмятый Элемент (Docker Compose)..."
+echo "🚀 Запускаю Service Company (Docker Compose)..."
 docker compose up -d --build
 
 echo "⏳ Жду базу данных..."

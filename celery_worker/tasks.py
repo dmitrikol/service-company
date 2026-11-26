@@ -150,7 +150,7 @@ def _reminder_text(start: datetime, service: str, car: str, tz=None) -> str:
         f"🔧 Услуга: {service}\n"
         f"🚘 Автомобиль: {car}\n"
         f"📅 {when}\n\n"
-        "Ждём вас в «Вмятый Элемент»! 😊"
+        "Ждём вас в «Service Company»! 😊"
     )
 
 
@@ -161,7 +161,7 @@ def _reminder_soon_text(start: datetime, service: str, car: str, tz=None) -> str
         f"🔧 Услуга: {service}\n"
         f"🚘 Автомобиль: {car}\n"
         f"📅 {when}\n\n"
-        "Ждём вас в «Вмятый Элемент»! 😊"
+        "Ждём вас в «Service Company»! 😊"
     )
 
 

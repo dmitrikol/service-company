@@ -42,18 +42,14 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 
 
 async def require_admin(
-    admin_id: str | None = Header(None, alias="admin-id"),
     admin_secret: str | None = Header(None, alias="x-admin-secret"),
 ):
-    """Защита админ-эндпоинтов.
-
-    Основной способ для веб-админки — ``x-admin-secret`` равный HMAC_SECRET.
-    Старый способ ``admin-id`` (ADMIN_VK_ID) оставлен для совместимости.
-    """
-    if admin_secret and hmac.compare_digest(admin_secret, settings.HMAC_SECRET):
-        return
-    allowed_ids = {str(settings.ADMIN_VK_ID)} if settings.ADMIN_VK_ID else set()
-    if admin_id and admin_id in allowed_ids:
+    """Защита админ-эндпоинтов: заголовок ``x-admin-secret`` равен HMAC_SECRET."""
+    if (
+        admin_secret
+        and settings.HMAC_SECRET
+        and hmac.compare_digest(admin_secret, settings.HMAC_SECRET)
+    ):
         return
     raise HTTPException(status_code=403, detail="Forbidden")
 

@@ -18,6 +18,6 @@ def health():
 @app.get("/admin", response_class=HTMLResponse)
 @app.get("/admin/", response_class=HTMLResponse)
 def admin_ui():
-    """Веб-админка «Вмятый Элемент» поверх существующих admin API."""
+    """Веб-админка «Service Company» поверх существующих admin API."""
     path = Path(__file__).parent / "web" / "admin.html"
     return path.read_text(encoding="utf-8")

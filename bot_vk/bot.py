@@ -1,4 +1,4 @@
-"""VK-бот «Вмятый Элемент» — клиентский сценарий: запись на услуги.
+"""VK-бот «Service Company» — клиентский сценарий: запись на услуги.
 
 Работает с тем же клиентским REST API backend'а (platform="vk"), но с
 VK-специфичным UI: обычные (не inline) клавиатуры максимум по 4 кнопки в ряд —
@@ -547,6 +547,7 @@ def register_handlers(bot: Bot) -> None:
             await _safe(show_profile(message, session), message)
             return
         if text == t.CMD_CONTACTS:
+            _restart_flow(message, session)
             await _safe(show_contacts(message), message)
             return
 
@@ -578,7 +579,7 @@ def main() -> None:
     api = API(token=VK_GROUP_TOKEN, http_client=http_client)
     bot = Bot(api=api)
     register_handlers(bot)
-    log.info("VK-бот Вмятый Элемент запускается...")
+    log.info("VK-бот Service Company запускается...")
 
     backoff = 5
     while True:

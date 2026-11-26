@@ -1,4 +1,4 @@
-# Обзор проекта — «Вмятый Элемент»
+# Обзор проекта — «Service Company»
 
 > Статус: сверено с кодом и запуском **2026-11-25**.
 > Активный канал — VK; папка проекта очищена от старого кода и артефактов.
@@ -71,8 +71,8 @@ backend/app/
     services.py           # активные услуги (с is_pdr)
     appointments.py       # слоты, мои записи, создание, отмена, перенос, /works/my
     contacts.py           # публичные контакты из settings
-    admin.py              # админ-эндпоинты; require_admin: x-admin-secret=HMAC_SECRET
-                          # либо legacy admin-id (ADMIN_VK_ID); client_vk_id в записях/работах
+    admin.py              # админ-эндпоинты; require_admin: только x-admin-secret=HMAC_SECRET;
+                          # client_vk_id в записях/работах
   models/                 # SQLAlchemy-модели (см. ниже)
   services/
     schedule.py           # расписание + validate_schedule
@@ -117,8 +117,8 @@ PROJECT_MEMORY/           # overview.md, changes.md, README.md
 ## API (`/api/v1`)
 
 Клиентские запросы идут с заголовками `platform: vk` и `user-id`. Админ-эндпоинты
-защищены `require_admin`: основной способ — `x-admin-secret: <HMAC_SECRET>`;
-для совместимости остался `admin-id` из `ADMIN_VK_ID`. JWT и подписи bodies нет.
+защищены `require_admin`: только `x-admin-secret: <HMAC_SECRET>`. Пустой секрет
+не проходит. JWT и подписи bodies нет.
 
 Клиентские:
 - `GET /health` (корень), `GET /schedule`, `GET /services`, `GET /contacts`;
@@ -127,8 +127,9 @@ PROJECT_MEMORY/           # overview.md, changes.md, README.md
 - `GET/POST /cars`, `PATCH/DELETE /cars/{id}`;
 - `GET /appointments/slots?date=YYYY-MM-DD&service_id=…` — занятые интервалы;
   PDR-услуги не пересекаются с обычными;
-- `GET /appointments/my`, `POST /appointments` (проверка расписания и конфликтов → 409),
-  `POST /appointments/{id}/cancel`, `POST /appointments/{id}/reschedule`.
+- `GET /appointments/my`, `POST /appointments` (проверка расписания и конфликтов → 409;
+  перед проверкой слота `pg_advisory_xact_lock` по типу услуги, PDR и обычные отдельно),
+  `POST /appointments/{id}/cancel`, `POST /appointments/{id}/reschedule` (тот же замок).
 
 Админ (`/admin`, всё под `Depends(require_admin)`):
 - clients: `GET/POST /clients`, `PATCH/DELETE /clients/{id}`,
@@ -187,12 +188,10 @@ remind_hours/remind_hours_2, contacts). В таблицах есть ссылк�
 
 ## Нюансы и хрупкие места
 
-- В `bot_vk/bot.py` ветка `CMD_CONTACTS` не сбрасывает сессию (в отличие от других
-  глобальных команд): после «📞 Контакты» из середины сценария последующий текст
-  может попасть в старый шаг (например, `editing_name`). Известный баг, не чинился.
+- «📞 Контакты» сбрасывает сессию так же, как остальные команды меню.
 - `vkbottle`/`aiohttp` в `bot_vk/requirements.txt` без фиксации версий; автотестов
   нет — только ручные проверки API и static-сверка кнопок.
-- Админ-эндпоинты защищены заголовком `x-admin-secret`/`admin-id`. Это не подпись
+- Админ-эндпоинты защищены только заголовком `x-admin-secret`. Это не подпись
   запроса: секрет нужно хранить в `.env` и не отдавать клиентам. Браузер держит
   его в `sessionStorage`.
 - Связанные lazy-load обрабатываются явной подгрузкой (`await db.get(User, …)`,

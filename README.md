@@ -1,4 +1,4 @@
-# «Вмятый Элемент» — система записи и учёта автосервиса
+# «Service Company» — система записи и учёта автосервиса
 
 Клиенты записываются на услуги через VK-бота; администратор ведёт услуги, записи,
 журнал работ, статистику и расписание через веб-админку. Бэкенд — FastAPI,
@@ -10,7 +10,7 @@
 |---|---|---|---|
 | `postgres` | postgres:15 | 5432 | БД `autoservice` |
 | `redis` | redis:7 | — | кэш/брокер Celery |
-| `minio` | minio/minio | 9000 / 9001 | S3-хранилище фото заявок (9001 — консоль) |
+| `minio` | bitnamilegacy/minio | 9000 / 9001 | S3-хранилище в compose; текущим кодом не используется (9001 — консоль) |
 | `backend` | FastAPI, SQLAlchemy(async), Alembic | 8000 | REST API (`/docs`) + веб-админка (`/admin`) |
 | `vk_bot` | vkbottle | — | клиентский бот ВКонтакте + уведомления админу в VK |
 | `celery_worker` | Celery + Beat | — | напоминания о записях в VK |
@@ -103,7 +103,7 @@ VK_GROUP_ID=числовой-id-сообщества
 ADMIN_VK_ID=ваш-vk-id-или-отрицательный-id-беседы
 
 docker compose up -d --build vk_bot   # или docker compose restart vk_bot, если контейнер уже был поднят
-docker compose logs -f vk_bot         # в логе должно появиться «VK-бот Вмятый Элемент запускается...»
+docker compose logs -f vk_bot         # в логе должно появиться «VK-бот Service Company запускается...»
 ```
 
 Без `VK_GROUP_TOKEN` контейнер `vk_bot` не падает и не перезапускается по
@@ -127,7 +127,7 @@ docker compose logs -f vk_bot         # в логе должно появить�
 |---|---|
 | `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | Postgres (host `postgres` — имя compose-сервиса) |
 | `REDIS_URL` | Redis |
-| `MINIO_ENDPOINT`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `MINIO_BUCKET_NAME` | MinIO; бакет создаётся на лету при загрузке фото |
+| `MINIO_ENDPOINT`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `MINIO_BUCKET_NAME` | MinIO; в текущем коде не используется |
 | `VK_GROUP_TOKEN`, `VK_GROUP_ID` | VK-бот и напоминания — токен сообщества и его ID |
 | `ADMIN_VK_ID` | VK id администратора (или отрицательный id беседы) для уведомлений |
 | `HMAC_SECRET` | пароль веб-админки (`x-admin-secret`) |
@@ -149,10 +149,10 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"
 docker run --rm python:3.11-slim python -c "import secrets; print(secrets.token_urlsafe(32))"
 ```
 
-> ⚠️ **Честно о текущем состоянии.** `HMAC_SECRET` теперь используется как пароль
+> ⚠️ **Честно о текущем состоянии.** `HMAC_SECRET` используется как пароль
 > веб-админки: фронтенд передаёт его в заголовке `x-admin-secret`, бэкенд
-> сравнивает его через `hmac.compare_digest`. Старый способ `admin-id` ещё
-> принимается для совместимости. `ENCRYPTION_KEY`
+> сравнивает его через `hmac.compare_digest`. Заголовок `admin-id` больше
+> не принимается. `ENCRYPTION_KEY`
 > по-прежнему только объявлен в конфиге: шифрования нет, телефоны, госномера и
 > VIN лежат в Postgres в открытом виде. После внедрения шифрования потеря ключа
 > сделает эти поля невосстановимыми — храните `.env` и бэкапы бережно.

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.models.appointment import Appointment
@@ -20,6 +21,25 @@ def _to_utc(value: datetime, tz) -> datetime:
     if value.tzinfo is None:
         value = value.replace(tzinfo=tz)
     return value.astimezone(timezone.utc)
+
+
+# Два ключа pg_advisory_xact_lock: PDR и обычные услуги не делят слоты.
+_LANE_LOCK_PDR = 74001
+_LANE_LOCK_REGULAR = 74002
+
+
+async def _lock_booking_lane(db: AsyncSession, is_pdr: bool) -> None:
+    """Держит транзакцию, пока слот этого типа не записан.
+
+    SELECT по пересечениям не запирает пустой слот: два запроса успевают
+    оба увидеть «свободно» и оба создать запись. Блокировка живёт до commit
+    или отката и отпускается вместе с транзакцией.
+    """
+    key = _LANE_LOCK_PDR if is_pdr else _LANE_LOCK_REGULAR
+    await db.execute(
+        text("SELECT pg_advisory_xact_lock(CAST(:key AS bigint))"),
+        {"key": key},
+    )
 
 
 def _local_iso(value: datetime | None, tz) -> str | None:
@@ -145,7 +165,9 @@ async def create_appointment(
         raise HTTPException(status_code=400, detail=error)
 
     # Проверка на пересечение с записями того же типа (PDR не пересекается с
-    # обычными услугами и наоборот — у PDR свой учёт времени)
+    # обычными услугами и наоборот — у PDR свой учёт времени).
+    # Сначала запираем полосу, иначе параллельный запрос пройдёт ту же проверку.
+    await _lock_booking_lane(db, service.is_pdr)
     conflict_stmt = select(Appointment).join(Appointment.service).where(
         Appointment.status != "cancelled",
         Appointment.start_datetime < end_datetime,
@@ -239,6 +261,7 @@ async def reschedule_my_appointment(
     if error:
         raise HTTPException(status_code=400, detail=error)
 
+    await _lock_booking_lane(db, service.is_pdr)
     conflict_stmt = select(Appointment).join(Appointment.service).where(
         Appointment.id != appointment.id,
         Appointment.status != "cancelled",
