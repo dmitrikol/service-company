@@ -123,3 +123,9 @@ compose как S3-инфраструктура, но текущим кодом �
 транзакцией: при 409 не остаётся частично слитых данных. Файлы:
 `backend/app/services/clients.py`, `backend/app/api/v1/appointments.py`,
 `backend/app/api/v1/admin.py`. Синтаксис проверен, Docker/БД не запускались.
+
+[2026-11-26] Этап 4 исправлений по аудиту: `PIP_INDEX_URL` теперь реально
+используется при сборке. В Dockerfile сервисов backend, bot_vk и celery_worker
+команда `pip install` получила `--index-url "$PIP_INDEX_URL"`; аргументы сборки
+ из `docker-compose.yml` перестали игнорироваться. Проверено через `docker compose
+ config --quiet`; образы не пересобирались.
