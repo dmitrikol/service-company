@@ -297,3 +297,7 @@ bot_vk/             # vkbottle: клиентский бот + vk_notify.py (ув
 celery_worker/      # Celery + Beat: напоминания в VK (tasks.py)
 PROJECT_MEMORY/     # память проекта: overview.md, README.md, changes.md (лог изменений)
 ```
+
+## Автор
+
+dmitrikol — https://github.com/dmitrikol
